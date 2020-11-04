@@ -1,0 +1,38 @@
+{
+    "adapters": [
+        {
+            "interface": "en0",
+            "protocol": "mqtt",
+            "transport": "tcp",
+            "port": 1883,
+            "role": "broker",
+            "scope": "#",
+            "name": "main mqtt broker"
+        },
+        {
+            "interface": "lo0",
+            "protocol": "mqtt",
+            "transport": "websocket",
+            "port": 1883,
+            "role": "broker",
+            "scope": "#",
+            "name": "websocket mqtt broker"
+        }
+    ],
+    "forwarders": [
+        {
+            "source": "remote/#",
+            "destination": "local/#",
+            "direction": "single"
+        }
+    ],
+    "system": {
+        "publish_back": true,
+        "timeouts": {
+            "receive": 10000,
+            "ack": 10000,
+            "advertise": 5000,
+            "ping": 6000
+        }
+    }
+}

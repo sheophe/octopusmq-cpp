@@ -1,0 +1,6 @@
+[submodule "lib/json"]
+	path = lib/json
+	url = https://github.com/nlohmann/json.git
+[submodule "lib/mqtt_cpp"]
+	path = lib/mqtt_cpp
+	url = https://github.com/redboltz/mqtt_cpp.git

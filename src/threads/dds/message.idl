@@ -1,0 +1,11 @@
+module octopus_mq {
+
+  @topic
+  struct octomq_dds_message {
+    @key unsigned long message_id;
+    unsigned long hash;
+    string data;
+    long data_size;
+  };
+
+};
