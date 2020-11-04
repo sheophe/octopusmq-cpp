@@ -15,7 +15,8 @@ set(LIB_MQTT_DIR ${LIB_DIR}/mqtt_cpp)
 project(octopusmq VERSION 1.0.0 LANGUAGES CXX)
 
 # find_package(OpenDDS REQUIRED)
-find_package(Boost REQUIRED)
+find_package(Boost 1.66.0 REQUIRED COMPONENTS system REQUIRED)
+find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
 
 # set(OPENDDS_LIBS OpenDDS::Dcps)
 
@@ -35,6 +36,7 @@ set(SRC_LIST
     ${CORE_DIR}/message_queue.cpp
     ${THREADS_DIR}/control.cpp
     ${THREADS_DIR}/mqtt/broker.cpp
+    ${THREADS_DIR}/mqtt/client.cpp
     ${SRC_DIR}/octopus_mq.cpp
 )
 
@@ -48,10 +50,11 @@ include_directories(
 )
 
 add_executable(${PROJECT_NAME} ${SRC_LIST})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${BOOST_ASIO_INCLUDE_DIRS})
 
 if (UNIX AND NOT APPLE)
     target_link_libraries(${PROJECT_NAME} stdc++fs)
 endif()
 
 # OPENDDS_TARGET_SOURCES(${PROJECT_NAME} "${THREADS_DIR}/dds/message.idl" OPENDDS_IDL_OPTIONS "-Lc++11")
-target_link_libraries(${PROJECT_NAME} pthread)#${OPENDDS_LIBS} pthread)
+target_link_libraries(${PROJECT_NAME} pthread)

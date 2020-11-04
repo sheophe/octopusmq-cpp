@@ -10,7 +10,7 @@ Language: Cpp
 MaxEmptyLinesToKeep: '2'
 NamespaceIndentation: Inner
 ReflowComments: 'true'
-SortIncludes: 'true'
+SortIncludes: 'false'
 SortUsingDeclarations: 'true'
 SpaceAfterTemplateKeyword: 'true'
 SpaceBeforeAssignmentOperators: 'true'
