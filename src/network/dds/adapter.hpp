@@ -15,7 +15,6 @@ using std::string;
 class dds_adapter_settings : public adapter_settings {
     transport_type _transport;
     std::list<string> _scope;
-    std::unique_ptr<connection> _connection;
 
     static inline const std::map<string, transport_type> _transport_from_name = {
         { OCTOMQ_ADAPTER_TRANSPORT_UDP, transport_type::udp },

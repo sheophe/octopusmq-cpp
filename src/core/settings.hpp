@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "core/json.hpp"
+#include "json.hpp"
 #include "network/adapter.hpp"
 #include "network/network.hpp"
 #include "threads/control.hpp"

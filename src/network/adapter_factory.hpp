@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 
-#include "core/json.hpp"
+#include "json.hpp"
 #include "network/adapter.hpp"
 #include "network/adapter_headers.hpp"
 #include "network/network.hpp"
@@ -16,7 +16,7 @@ using std::string, std::shared_ptr;
 
 class adapter_factory {
    public:
-    static const shared_ptr<adapter_settings> from_json(const nlohmann::json &json);
+    static shared_ptr<adapter_settings> from_json(const nlohmann::json &json);
     // static const nlohmann::json create_json(const shared_ptr<adapter_settings> &adapter_settings,
     //                                         const protocol_type &protocol);
 

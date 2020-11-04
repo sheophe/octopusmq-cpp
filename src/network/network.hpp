@@ -78,43 +78,6 @@ class phy {
     ip_int broadcast_address() const;
 };
 
-class socket {
-    phy _phy;
-    transport_type _transport;
-    tx_type _tx_type;
-    socket_int _socket;
-    address _address;
-    address _multicast_group;
-    uint8_t _multicast_radius;
-    bool _connected;
-
-    socket(const phy &phy, const transport_type &transport, const port_int port,
-           const socket_int sock);
-
-   public:
-    socket(const phy &phy, const transport_type &transport, const port_int port);
-    socket(const phy &phy, const transport_type &transport, const address &multicast_group,
-           const uint8_t &multicast_radius);
-
-    bool operator==(const socket &b) const;
-    bool operator<(const socket &b) const;
-
-    void open();
-    void listen();
-    std::shared_ptr<socket> accept(const uint32_t timeout);
-    void connect(const address &remote_address);
-    ssize_t recv(network_payload &payload);
-    ssize_t send_tcp(const network_payload &payload);
-    ssize_t send_udp(const address &remote_address, const network_payload &payload);
-    void close();
-
-    const phy &phy() const;
-    const transport_type &transport() const;
-    const address &this_address() const;
-    const address &remote_address() const;
-    const bool &is_connected() const;
-};
-
 class adapter_params {
    public:
     phy phy;

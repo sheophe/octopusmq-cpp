@@ -54,7 +54,7 @@ class invalid_invocation : public std::runtime_error {
    public:
     explicit invalid_invocation(const string &fname)
         : std::runtime_error("invalid invocation of function '" + fname + "'.") {}
-}
+};
 
 }  // namespace octopus_mq
 

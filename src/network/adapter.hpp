@@ -5,7 +5,7 @@
 #include <map>
 #include <string>
 
-#include "core/json.hpp"
+#include "json.hpp"
 #include "network/network.hpp"
 
 #define OCTOMQ_ADAPTER_FIELD_INTERFACE "interface"

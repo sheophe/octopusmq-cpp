@@ -3,13 +3,19 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 set(SRC_DIR src)
+set(LIB_DIR lib)
+
 set(CORE_DIR ${SRC_DIR}/core)
 set(NETWORK_DIR ${SRC_DIR}/network)
 set(THREADS_DIR ${SRC_DIR}/threads)
 
+set(LIB_JSON_DIR ${LIB_DIR}/json)
+set(LIB_MQTT_DIR ${LIB_DIR}/mqtt_cpp)
+
 project(octopusmq VERSION 1.0.0 LANGUAGES CXX)
 
 # find_package(OpenDDS REQUIRED)
+find_package(Boost REQUIRED)
 
 # set(OPENDDS_LIBS OpenDDS::Dcps)
 
@@ -33,6 +39,8 @@ set(SRC_LIST
 )
 
 include_directories(
+    ${LIB_JSON_DIR}/single_include/nlohmann
+    ${LIB_MQTT_DIR}/include
     ${SRC_DIR}
     ${CORE_DIR}
     ${NETWORK_DIR}

@@ -8,7 +8,7 @@ static inline const std::map<string, protocol_type> _protocol_from_name = {
     { "mqtt", protocol_type::mqtt }, { "dds", protocol_type::dds }
 };
 
-const shared_ptr<adapter_settings> adapter_factory::from_json(const nlohmann::json &json) {
+shared_ptr<adapter_settings> adapter_factory::from_json(const nlohmann::json &json) {
     if (not json.contains(OCTOMQ_ADAPTER_FIELD_PROTOCOL))
         throw missing_field_error(OCTOMQ_ADAPTER_FIELD_PROTOCOL);
 
