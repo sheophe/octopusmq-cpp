@@ -30,6 +30,7 @@ class mqtt_adapter_settings : public adapter_settings {
 
     static inline const std::map<string, transport_type> _transport_from_name = {
         { OCTOMQ_ADAPTER_TRANSPORT_TCP, transport_type::tcp },
+        { OCTOMQ_ADAPTER_TRANSPORT_TLS, transport_type::tls },
         { OCTOMQ_ADAPTER_TRANSPORT_WS, transport_type::websocket }
     };
 

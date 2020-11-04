@@ -19,7 +19,7 @@ enum class protocol_type { mqtt, dds, stop };
 
 enum class tx_type { unicast, multicast, broadcast };
 
-enum class transport_type { udp, tcp, websocket };
+enum class transport_type { udp, tcp, tls, websocket };
 
 enum class network_event_type { send, receive };
 

@@ -22,6 +22,7 @@
 
 #define OCTOMQ_ADAPTER_TRANSPORT_UDP "udp"
 #define OCTOMQ_ADAPTER_TRANSPORT_TCP "tcp"
+#define OCTOMQ_ADAPTER_TRANSPORT_TLS "tls"
 #define OCTOMQ_ADAPTER_TRANSPORT_WS "websocket"
 
 namespace octopus_mq {

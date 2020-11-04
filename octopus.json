@@ -27,7 +27,6 @@
         }
     ],
     "system": {
-        "publish_back": true,
         "timeouts": {
             "receive": 10000,
             "ack": 10000,
