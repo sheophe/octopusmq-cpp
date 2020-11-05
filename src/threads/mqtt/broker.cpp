@@ -40,12 +40,13 @@ broker<Server>::broker(const class adapter_params& adapter) : broker_base(adapte
         auto& ep = *spep;
         std::weak_ptr<connection> wp(spep);
 
-        using packet_id_t = typename std::remove_reference_t<decltype(ep)>::packet_id_t;
         log::print(log_type::info, "broker: accepted new connection.");
         // Pass spep to keep lifetime.
         // It makes sure wp.lock() never return nullptr in the handlers below
         // including close_handler and error_handler.
         ep.start_session(std::move(spep));
+
+        using packet_id_t = typename std::remove_reference_t<decltype(ep)>::packet_id_t;
 
         // Set connection level handlers (lower than MQTT)
         ep.set_close_handler([this, wp]() {
@@ -132,7 +133,7 @@ broker<Server>::broker(const class adapter_params& adapter) : broker_base(adapte
             [this, wp](
                 packet_id_t packet_id,
                 std::vector<std::tuple<mqtt_cpp::buffer, mqtt_cpp::subscribe_options>> entries) {
-                std::cout << "[server]subscribe received. packet_id: " << packet_id << std::endl;
+                std::cout << "[server] subscribe received. packet_id: " << packet_id << std::endl;
                 std::vector<mqtt_cpp::suback_return_code> res;
                 res.reserve(entries.size());
                 auto sp = wp.lock();
@@ -150,7 +151,7 @@ broker<Server>::broker(const class adapter_params& adapter) : broker_base(adapte
 
         ep.set_unsubscribe_handler(
             [this, wp](packet_id_t packet_id, std::vector<mqtt_cpp::buffer> topics) {
-                std::cout << "[server]unsubscribe received. packet_id: " << packet_id << std::endl;
+                std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
                 for (auto const& topic : topics) {
                     this->_subs.erase(topic);
                 }
@@ -165,8 +166,7 @@ broker<Server>::broker(const class adapter_params& adapter) : broker_base(adapte
                                              mqtt_cpp::optional<mqtt_cpp::buffer> const& username,
                                              mqtt_cpp::optional<mqtt_cpp::buffer> const& password,
                                              mqtt_cpp::optional<mqtt_cpp::will>, bool clean_start,
-                                             std::uint16_t keep_alive,
-                                             mqtt_cpp::v5::properties /*props*/) {
+                                             std::uint16_t keep_alive, mqtt_cpp::v5::properties) {
             using namespace mqtt_cpp::literals;
             std::cout << "[server] client_id    : " << client_id << std::endl;
             std::cout << "[server] username     : " << (username ? username.value() : "none"_mb)
@@ -273,8 +273,8 @@ broker<Server>::broker(const class adapter_params& adapter) : broker_base(adapte
             });
 
         ep.set_v5_unsubscribe_handler([this, wp](packet_id_t packet_id,
-                                                 std::vector<MQTT_NS::buffer> topics,
-                                                 MQTT_NS::v5::properties) {
+                                                 std::vector<mqtt_cpp::buffer> topics,
+                                                 mqtt_cpp::v5::properties) {
             std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
             for (auto const& topic : topics) {
                 this->_subs.erase(topic);
@@ -297,6 +297,36 @@ template <class Server>
 void broker<Server>::stop() {
     _server.close();
     _ioc.stop();
+}
+
+template <class Server>
+void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
+    mqtt_cpp::buffer topic_name(std::string_view(message.topic().name()));
+    auto const& idx = this->subs.template get<topic_tag>();
+    auto r = idx.equal_range(topic_name);
+    for (; r.first != r.second; ++r.first) {
+        r.first->con->publish(topic_name, contents,
+                              std::min(r.first->qos_value, pubopts.get_qos()));
+    }
+}
+
+template <class Server>
+void broker<Server>::inject_publish(const std::shared_ptr<message> message,
+                                    mqtt_cpp::v5::properties props) {
+    mqtt_cpp::buffer topic_name(std::string_view(message.topic().name()));
+    auto const& idx = _subs.template get<topic_tag>();
+    auto r = idx.equal_range(topic_name);
+    for (; r.first != r.second; ++r.first) {
+        auto retain = [&] {
+            if (r.first->rap_value == mqtt_cpp::rap::retain) {
+                return pubopts.get_retain();
+            }
+            return mqtt_cpp::retain::no;
+        }();
+        r.first->con->publish(topic_name, contents,
+                              std::min(r.first->qos_value, pubopts.get_qos()) | retain,
+                              std::move(props));
+    }
 }
 
 }  // namespace octopus_mq::mqtt

@@ -17,6 +17,8 @@ using std::string;
 
 enum class mqtt_adapter_role { broker, client };
 
+enum class mqtt_version { v3, v5 };
+
 class mqtt_adapter_settings : public adapter_settings {
     transport_type _transport;
     address _remote_address;  // is used only when adapter is in client mode

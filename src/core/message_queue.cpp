@@ -6,8 +6,8 @@ message::message(const int &packet_type) : _packet_type(packet_type) {}
 
 message::message(message_payload &&payload) : _payload(move(payload)) {}
 
-message::message(message_payload &&payload, const class address &address)
-    : _payload(move(payload)), _relevant_address(address) {}
+message::message(message_payload &&payload, const string &origin_client_id)
+    : _payload(move(payload)), _origin_client_id(origin_client_id) {}
 
 void message::payload(const message_payload &payload) { _payload = payload; }
 
@@ -15,13 +15,13 @@ void message::payload(message_payload &&payload) { _payload = move(payload); }
 
 void message::topic(const string &topic) { _topic = topic; }
 
-void message::address(const class address &address) { _relevant_address = address; }
+void message::origin(const string &origin_client_id) { _origin_client_id = origin_client_id; }
 
 const message_payload &message::payload() const { return _payload; }
 
 const string &message::topic() const { return _topic; }
 
-const class address &message::address() const { return _relevant_address; }
+const string &message::origin() const { return _origin_client_id; }
 
 message_notify_handle::message_notify_handle()
     : _cv(std::make_unique<std::condition_variable>()), _event(false) {}

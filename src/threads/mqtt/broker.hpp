@@ -1,6 +1,9 @@
 #ifndef OCTOMQ_MQTT_BROKER_H_
 #define OCTOMQ_MQTT_BROKER_H_
 
+#include "core/message_queue.hpp"
+#include "core/topic.hpp"
+#include "network/mqtt/adapter.hpp"
 #include "network/network.hpp"
 #include "threads/mqtt/config.hpp"
 
@@ -30,6 +33,9 @@ class broker_base {
     virtual void run() = 0;
     virtual void stop() = 0;
 
+    virtual bool has_topic_subscribers(const class topic& topic) const = 0;
+    virtual void inject_publish(const std::shared_ptr<message> message) = 0;
+
     const adapter_params& adapter_params() const;
 };
 
@@ -53,41 +59,41 @@ class broker : public broker_base {
     using connection = typename Server::endpoint_t;
     using connection_sp = std::shared_ptr<connection>;
 
-    class sub_con {
+    class subscription {
        public:
         mqtt_cpp::buffer topic;
         connection_sp con;
         mqtt_cpp::qos qos_value;
         mqtt_cpp::rap rap_value;
 
-        sub_con(mqtt_cpp::buffer topic, connection_sp con, mqtt_cpp::qos qos_value)
+        subscription(mqtt_cpp::buffer topic, connection_sp con, mqtt_cpp::qos qos_value)
             : topic(std::move(topic)),
               con(std::move(con)),
               qos_value(qos_value),
               rap_value(mqtt_cpp::rap::dont) {}  // MQTT v3.1.1 constructor
 
-        sub_con(mqtt_cpp::buffer topic, connection_sp con, mqtt_cpp::qos qos_value,
-                mqtt_cpp::rap rap_value)
+        subscription(mqtt_cpp::buffer topic, connection_sp con, mqtt_cpp::qos qos_value,
+                     mqtt_cpp::rap rap_value)
             : topic(std::move(topic)),
               con(std::move(con)),
               qos_value(qos_value),
               rap_value(rap_value) {}  // MQTT v5 constructor
     };
 
-    using mi_sub_con = multi_index::multi_index_container<
-        sub_con,
-        multi_index::indexed_by<multi_index::ordered_non_unique<
-                                    multi_index::tag<topic_tag>,  // Topic tag
-                                    BOOST_MULTI_INDEX_MEMBER(sub_con, mqtt_cpp::buffer, topic)>,
-                                multi_index::ordered_non_unique<  // Connection tag
-                                    multi_index::tag<connection_tag>,
-                                    BOOST_MULTI_INDEX_MEMBER(sub_con, connection_sp, con)>>>;
+    using subscription_container = multi_index::multi_index_container<
+        subscription, multi_index::indexed_by<
+                          multi_index::ordered_non_unique<  // Topic index
+                              multi_index::tag<topic_tag>,
+                              BOOST_MULTI_INDEX_MEMBER(subscription, mqtt_cpp::buffer, topic)>,
+                          multi_index::ordered_non_unique<  // Connection index
+                              multi_index::tag<connection_tag>,
+                              BOOST_MULTI_INDEX_MEMBER(subscription, connection_sp, con)>>>;
 
    private:
     boost::asio::io_context _ioc;
     Server _server;
     std::set<connection_sp> _connections;
-    mi_sub_con _subs;
+    subscription_container _subs;
 
     inline void close_proc(connection_sp const& con);
 
@@ -96,6 +102,10 @@ class broker : public broker_base {
 
     void run();
     void stop();
+
+    bool has_topic_subscribers(const class topic& topic) const;
+    void inject_publish(const std::shared_ptr<message> message);
+    void inject_publish(const std::shared_ptr<message> message, mqtt_cpp::v5::properties props);
 };
 
 }  // namespace octopus_mq::mqtt

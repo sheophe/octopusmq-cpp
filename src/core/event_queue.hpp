@@ -3,6 +3,7 @@
 
 #include <condition_variable>
 #include <cstdint>
+#include <list>
 #include <map>
 #include <mutex>
 #include <queue>

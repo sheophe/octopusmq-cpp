@@ -94,4 +94,34 @@ const uint8_t &topic::qos() const { return _qos; }
 
 bool topic::empty() const { return _name == "" and _id == OCTOMQ_NULL_TOPICID; }
 
+topic_list::topic_list() {}
+
+void topic_list::add(const topic &topic) {
+    topic_map::iterator iter = _map.find(topic);
+    if (iter != _map.end())
+        ++(iter->second);
+    else
+        _map.emplace(topic, 0);
+}
+
+void topic_list::remove(const topic &topic) {
+    topic_map::iterator iter = _map.find(topic);
+    if (iter != _map.end()) {
+        if (iter->second == 1)
+            _map.erase(iter);
+        else
+            --(iter->second);
+    }
+}
+
+topic_map::iterator topic_list::find(const topic &topic) { return _map.find(topic); }
+
+topic_map::iterator topic_list::begin() { return _map.begin(); }
+
+topic_map::const_iterator topic_list::begin() const { return _map.begin(); }
+
+topic_map::iterator topic_list::end() { return _map.end(); }
+
+topic_map::const_iterator topic_list::end() const { return _map.end(); }
+
 }  // namespace octopus_mq

@@ -21,7 +21,7 @@ using message_payload = std::vector<unsigned char>;
 class message {
     message_payload _payload;
     string _topic;
-    address _relevant_address;
+    string _origin_client_id;
     int _packet_type;
 
    public:
@@ -29,16 +29,16 @@ class message {
     explicit message(const int &packet_type);
     explicit message(message_payload &&payload);
     message(const message_payload &payload) = delete;
-    message(message_payload &&payload, const address &address);
+    message(message_payload &&payload, const string &origin_client_id);
 
     void payload(const message_payload &payload);
     void payload(message_payload &&payload);
     void topic(const string &topic);
-    void address(const class address &address);
+    void origin(const string &origin_client_id);
 
     const message_payload &payload() const;
     const string &topic() const;
-    const class address &address() const;
+    const string &origin() const;
 };
 
 class message_notify_handle {

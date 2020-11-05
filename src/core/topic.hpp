@@ -3,7 +3,7 @@
 
 #include <condition_variable>
 #include <cstdint>
-#include <list>
+#include <map>
 #include <mutex>
 #include <string>
 
@@ -48,15 +48,22 @@ class topic {
     bool empty() const;
 };
 
+using topic_map = std::map<topic, uint32_t>;
+
 class topic_list {
-    std::list<topic> _list;
-    std::mutex _mutex;
-    std::condition_variable _item_available;
-    bool _notified;
+    topic_map _map;
 
    public:
     topic_list();
-    ~topic_list() = default;
+
+    void add(const topic &topic);
+    void remove(const topic &topic);
+
+    topic_map::iterator find(const topic &topic);
+    topic_map::iterator begin();
+    topic_map::const_iterator begin() const;
+    topic_map::iterator end();
+    topic_map::const_iterator end() const;
 };
 
 }  // namespace octopus_mq
