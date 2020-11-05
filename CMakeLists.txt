@@ -16,7 +16,7 @@ project(octopusmq VERSION 1.0.0 LANGUAGES CXX)
 
 option(OCTOMQ_ENABLE_TLS "Enable TLS support (OpenSSL is required)" OFF)
 
-# find_package(OpenDDS REQUIRED)
+find_package(OpenDDS REQUIRED)
 
 find_package(Boost 1.66.0 REQUIRED COMPONENTS system REQUIRED)
 find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
@@ -45,21 +45,7 @@ set(SRC_LIST
     ${CORE_DIR}/event_queue.cpp
     ${CORE_DIR}/message_queue.cpp
     ${THREADS_DIR}/control.cpp
-    ${THREADS_DIR}/mqtt/tcp_broker.cpp
-    ${THREADS_DIR}/mqtt/ws_broker.cpp
-    ${SRC_DIR}/octopus_mq.cpp
-)
-
-if (OCTOMQ_ENABLE_TLS)
-    set(SRC_LIST
-        ${SRC_LIST}
-        ${SRC_DIR}/mqtt/tls_broker.cpp
-        ${SRC_DIR}/mqtt/tls_ws_broker.cpp
-    )
-endif()
-
-set(SRC_LIST
-    ${SRC_LIST}
+    ${THREADS_DIR}/mqtt/broker.cpp
     ${SRC_DIR}/octopus_mq.cpp
 )
 

@@ -79,16 +79,20 @@ const ip_int &address::ip() const { return _ip; }
 
 bool address::empty() const { return (_ip == OCTOMQ_NULL_IP) and (_port == OCTOMQ_NULL_PORT); }
 
-phy::phy() : _ip(OCTOMQ_NULL_IP), _name("any") {}
+phy::phy() : _ip(OCTOMQ_NULL_IP), _name(OCTOMQ_IFACE_NAME_ANY) {}
 
 phy::phy(const string &name) : _ip(OCTOMQ_NULL_IP), _name(name) {
-    phy_addresses();
-    if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    if (_name != OCTOMQ_IFACE_NAME_ANY) {
+        phy_addresses();
+        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    }
 }
 
 phy::phy(string &&name) : _ip(OCTOMQ_NULL_IP), _name(std::move(name)) {
-    phy_addresses();
-    if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    if (_name != OCTOMQ_IFACE_NAME_ANY) {
+        phy_addresses();
+        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    }
 }
 
 phy::phy(const ip_int &ip) : _ip(ip), _name(phy_name()) {}
@@ -127,28 +131,38 @@ ip_int phy::broadcast_address() const { return _ip | ~_netmask; }
 
 void phy::name(const string &name) {
     _name = name;
-    phy_addresses();
-    if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    if (_name == OCTOMQ_IFACE_NAME_ANY) {
+        _ip = OCTOMQ_NULL_IP;
+    } else {
+        phy_addresses();
+        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    }
 }
 
 void phy::name(string &&name) {
     _name = std::move(name);
-    phy_addresses();
-    if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    if (_name == OCTOMQ_IFACE_NAME_ANY) {
+        _ip = OCTOMQ_NULL_IP;
+    } else {
+        phy_addresses();
+        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+    }
 }
 
 void phy::ip(const ip_int &ip) {
     _ip = ip;
-    _name = phy_name();
-    if (_name.empty()) {
-        char addr_str[INET_ADDRSTRLEN];
-        struct in_addr ia;
-        memset(&ia, 0, sizeof(ia));
-        ia.s_addr = (in_addr_t)_ip;
-        if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
-            throw std::runtime_error("interface not found: " + string(addr_str));
+    if (_ip != OCTOMQ_NULL_IP) {
+        _name = phy_name();
+        if (_name.empty()) {
+            char addr_str[INET_ADDRSTRLEN];
+            struct in_addr ia;
+            memset(&ia, 0, sizeof(ia));
+            ia.s_addr = (in_addr_t)_ip;
+            if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
+                throw std::runtime_error("interface not found: " + string(addr_str));
+        }
+        phy_addresses();
     }
-    phy_addresses();
 }
 
 const string &phy::name() const { return _name; }

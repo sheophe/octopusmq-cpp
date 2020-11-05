@@ -63,6 +63,13 @@ void log::print(const log_type &type, const char *format, ...) {
     }
 }
 
+void log::print(const log_type &type, const string &message) {
+    if (not message.empty()) {
+        std::lock_guard<std::mutex> log_lock(_mutex);
+        std::cout << _log_prefix.find(type)->second << message << OCTOMQ_RESET << std::endl;
+    }
+}
+
 void log::print_action_left(const network_event_type &event_type, const string &action,
                             const uint32_t &length, const uint32_t &hash) {
     std::cout << std::right << std::hex << std::setw(8) << std::setfill('0') << hash;
