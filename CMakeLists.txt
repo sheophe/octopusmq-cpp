@@ -15,6 +15,7 @@ set(LIB_MQTT_DIR ${LIB_DIR}/mqtt_cpp)
 project(octopusmq VERSION 1.0.0 LANGUAGES CXX)
 
 option(OCTOMQ_ENABLE_TLS "Enable TLS support (OpenSSL is required)" OFF)
+option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" ON)
 
 find_package(OpenDDS REQUIRED)
 
@@ -23,6 +24,7 @@ find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
 
 if (OCTOMQ_ENABLE_TLS)
     message(STATUS "Configuring to support TLS")
+    add_definitions(-DOCTOMQ_ENABLE_TLS)
     find_package(OpenSSL REQUIRED)
 else()
     message(STATUS "Configuring without TLS support")
@@ -30,7 +32,13 @@ endif()
 
 # set(OPENDDS_LIBS OpenDDS::Dcps)
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -pedantic -g")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Werror -pedantic")
+
+if (OCTOMQ_RELEASE_COMPILATION)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -O3")
+else()
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
+endif()
 
 set(SRC_LIST
     ${NETWORK_DIR}/network.cpp

@@ -11,6 +11,7 @@
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
+#include <boost/static_assert.hpp>
 
 namespace octopus_mq::mqtt {
 
@@ -39,6 +40,16 @@ class broker_base {
 // mqtt_cpp::server_tls_ws<>
 template <class Server>
 class broker : public broker_base {
+    static_assert(std::is_same<Server, mqtt_cpp::server<>>::value or
+                      std::is_same<Server, mqtt_cpp::server_ws<>>::value,
+                  "unsupported server class.");
+
+#ifdef OCTOMQ_ENABLE_TLS
+    static_assert(std::is_same<Server, mqtt_cpp::server_tls<>>::value or
+                      std::is_same<Server, mqtt_cpp::server_tls_ws<>>::value,
+                  "unsupported server class.");
+#endif
+
     using connection = typename Server::endpoint_t;
     using connection_sp = std::shared_ptr<connection>;
 
