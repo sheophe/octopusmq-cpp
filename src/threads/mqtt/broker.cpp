@@ -11,7 +11,7 @@ broker_base::broker_base(const class adapter_params& adapter, message_queue& glo
 const adapter_params& broker_base::adapter_params() const { return _adapter_params; }
 
 template <class Server>
-inline void broker<Server>::close_proc(connection_sp const& con) {
+inline void broker<Server>::close_connection(connection_sp const& con) {
     this->_cons.erase(con);
     auto& idx = this->_subs.template get<connection_tag>();
     auto r = idx.equal_range(con);
@@ -55,14 +55,14 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
             log::print(log_type::info, "broker: connection closed.");
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            this->close_proc(sp);
+            this->close_connection(sp);
         });
 
         ep.set_error_handler([this, wp](mqtt_cpp::error_code ec) {
             log::print(log_type::error, ec.message());
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            this->close_proc(sp);
+            this->close_connection(sp);
         });
 
         // Set handlers for MQTTv3 protocol
@@ -90,7 +90,7 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
             std::cout << "[server] disconnect received." << std::endl;
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            this->close_proc(sp);
+            this->close_connection(sp);
         });
 
         ep.set_puback_handler([](packet_id_t packet_id) {
@@ -190,7 +190,7 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
                           << " reason_code: " << reason_code << std::endl;
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
-                this->close_proc(sp);
+                this->close_connection(sp);
             });
 
         ep.set_v5_puback_handler([](packet_id_t packet_id,
@@ -238,12 +238,9 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
             auto const& idx = this->_subs.template get<topic_tag>();
             auto r = idx.equal_range(topic_name);
             for (; r.first != r.second; ++r.first) {
-                auto retain = [&] {
-                    if (r.first->rap_value == mqtt_cpp::rap::retain) {
-                        return pubopts.get_retain();
-                    }
-                    return mqtt_cpp::retain::no;
-                }();
+                mqtt_cpp::retain retain = (r.first->rap_value == mqtt_cpp::rap::retain) s
+                                              ? pubopts.get_retain()
+                                              : mqtt_cpp::retain::no;
                 r.first->con->publish(topic_name, contents,
                                       std::min(r.first->qos_value, pubopts.get_qos()) | retain,
                                       std::move(props));
@@ -327,15 +324,11 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message,
     auto const& idx = _subs.template get<topic_tag>();
     auto r = idx.equal_range(topic_name);
     for (; r.first != r.second; ++r.first) {
-        auto retain = [&] {
-            if (r.first->rap_value == mqtt_cpp::rap::retain) {
-                return pubopts.get_retain();
-            }
-            return mqtt_cpp::retain::no;
-        }();
+        mqtt_cpp::retain retain = (r.first->rap_value == mqtt_cpp::rap::retain)
+                                      ? pubopts.get_retain()
+                                      : mqtt_cpp::retain::no;
         r.first->con->publish(topic_name, contents,
-                              std::min(r.first->qos_value, pubopts.get_qos()) | retain,
-                              std::move(props));
+                              std::min(r.first->qos_value, pubopts.get_qos()) | retain, props);
     }
 }
 

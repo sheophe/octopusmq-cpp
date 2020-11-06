@@ -93,7 +93,7 @@ class broker : public broker_base {
     std::set<connection_sp> _connections;
     subscription_container _subs;
 
-    inline void close_proc(connection_sp const& con);
+    inline void close_connection(connection_sp const& con);
 
    public:
     broker(const class adapter_params& adapter, message_queue& global_queue);
