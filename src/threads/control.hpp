@@ -25,6 +25,7 @@ class control_settings {
     transport_type _transport;
     port_int _port;
     string _root_topic;
+
     static inline const std::map<string, protocol_type> _ctrl_proto_map = {
         { "mqtt", protocol_type::mqtt }, { "dds", protocol_type::dds }
     };
@@ -57,9 +58,9 @@ class control_settings {
 };
 
 class control {
-    static std::list<std::tuple<adapter_settings *, std::thread, std::thread>> _thread_list;
     static inline bool _initialized = false;
     static inline bool _daemon = false;
+    static std::thread _queue_manager_thread;
 
     static void arg_daemon();
     static void arg_help();

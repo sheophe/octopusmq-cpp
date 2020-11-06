@@ -2,7 +2,6 @@
 
 #include <stdexcept>
 
-#include "core/event_queue.hpp"
 #include "core/log.hpp"
 #include "threads/control.hpp"
 

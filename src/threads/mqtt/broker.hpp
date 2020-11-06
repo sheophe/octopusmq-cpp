@@ -4,6 +4,7 @@
 #include "core/message_queue.hpp"
 #include "core/topic.hpp"
 #include "network/mqtt/adapter.hpp"
+#include "network/adapter.hpp"
 #include "network/network.hpp"
 #include "threads/mqtt/config.hpp"
 
@@ -23,17 +24,14 @@ namespace multi_index = boost::multi_index;
 struct topic_tag {};
 struct connection_tag {};
 
-class broker_base {
+class broker_base : public adapter_interface {
    protected:
     adapter_params _adapter_params;
+    message_queue& _global_queue;
 
    public:
-    broker_base(const class adapter_params& adapter);
+    broker_base(const class adapter_params& adapter, message_queue& global_queue);
 
-    virtual void run() = 0;
-    virtual void stop() = 0;
-
-    virtual bool has_topic_subscribers(const class topic& topic) const = 0;
     virtual void inject_publish(const std::shared_ptr<message> message) = 0;
 
     const adapter_params& adapter_params() const;
@@ -48,12 +46,12 @@ template <class Server>
 class broker : public broker_base {
     static_assert(std::is_same<Server, mqtt_cpp::server<>>::value or
                       std::is_same<Server, mqtt_cpp::server_ws<>>::value,
-                  "unsupported server class.");
+                  "unsupported server class");
 
 #ifdef OCTOMQ_ENABLE_TLS
     static_assert(std::is_same<Server, mqtt_cpp::server_tls<>>::value or
                       std::is_same<Server, mqtt_cpp::server_tls_ws<>>::value,
-                  "unsupported server class.");
+                  "unsupported server class");
 #endif
 
     using connection = typename Server::endpoint_t;
@@ -70,7 +68,7 @@ class broker : public broker_base {
             : topic(std::move(topic)),
               con(std::move(con)),
               qos_value(qos_value),
-              rap_value(mqtt_cpp::rap::dont) {}  // MQTT v3.1.1 constructor
+              rap_value(mqtt_cpp::rap::dont) {}  // MQTT v3 constructor
 
         subscription(mqtt_cpp::buffer topic, connection_sp con, mqtt_cpp::qos qos_value,
                      mqtt_cpp::rap rap_value)
@@ -98,12 +96,11 @@ class broker : public broker_base {
     inline void close_proc(connection_sp const& con);
 
    public:
-    broker(const class adapter_params& adapter);
+    broker(const class adapter_params& adapter, message_queue& global_queue);
 
     void run();
     void stop();
 
-    bool has_topic_subscribers(const class topic& topic) const;
     void inject_publish(const std::shared_ptr<message> message);
     void inject_publish(const std::shared_ptr<message> message, mqtt_cpp::v5::properties props);
 };

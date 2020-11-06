@@ -64,6 +64,12 @@ class adapter_settings {
     static const string &protocol_name(const protocol_type &protocol);
 };
 
+class adapter_interface {
+   public:
+    virtual void run() = 0;
+    virtual void stop() = 0;
+};
+
 }  // namespace octopus_mq
 
 #endif

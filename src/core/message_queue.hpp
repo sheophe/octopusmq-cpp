@@ -19,9 +19,12 @@ using std::string;
 using message_payload = std::vector<unsigned char>;
 
 class message {
-    message_payload _payload;
+    message_payload
+        _payload;  // Only the actual message without flags and properties of any protocol
     string _topic;
     string _origin_client_id;
+    uint8_t _origin_pubopts;
+
     int _packet_type;
 
    public:
@@ -30,15 +33,18 @@ class message {
     explicit message(message_payload &&payload);
     message(const message_payload &payload) = delete;
     message(message_payload &&payload, const string &origin_client_id);
+    message(message_payload &&payload, const uint8_t pubopts);
 
     void payload(const message_payload &payload);
     void payload(message_payload &&payload);
     void topic(const string &topic);
     void origin(const string &origin_client_id);
+    void pubopts(const uint8_t pubopts);
 
     const message_payload &payload() const;
     const string &topic() const;
     const string &origin() const;
+    uint8_t pubopts() const;
 };
 
 class message_notify_handle {

@@ -5,7 +5,8 @@
 
 namespace octopus_mq::mqtt {
 
-broker_base::broker_base(const class adapter_params& adapter) : _adapter_params(adapter) {}
+broker_base::broker_base(const class adapter_params& adapter, message_queue& global_queue)
+    : _adapter_params(adapter), _global_queue(global_queue) {}
 
 const adapter_params& broker_base::adapter_params() const { return _adapter_params; }
 
@@ -18,7 +19,8 @@ inline void broker<Server>::close_proc(connection_sp const& con) {
 }
 
 template <class Server>
-broker<Server>::broker(const class adapter_params& adapter) : broker_base(adapter) {
+broker<Server>::broker(const class adapter_params& adapter, message_queue& global_queue)
+    : broker_base(adapter, global_queue) {
     // When octopus_mq::phy gets the name defined in OCTOMQ_IFACE_NAME_ANY
     // instead of correct interface name (which means any interface should be listened),
     // it stores address defined in OCTOMQ_NULL_IP as an interface IP address.
@@ -301,7 +303,11 @@ void broker<Server>::stop() {
 
 template <class Server>
 void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
-    mqtt_cpp::buffer topic_name(std::string_view(message.topic().name()));
+    mqtt_cpp::buffer topic_name(std::string_view(message->topic().data(), message->topic().size()));
+    mqtt_cpp::buffer contents(std::string_view(
+        reinterpret_cast<const char*>(message->payload().data()), message->payload().size()));
+    mqtt_cpp::publish_options pubopts(message->pubopts());
+
     auto const& idx = this->subs.template get<topic_tag>();
     auto r = idx.equal_range(topic_name);
     for (; r.first != r.second; ++r.first) {
@@ -313,7 +319,11 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
 template <class Server>
 void broker<Server>::inject_publish(const std::shared_ptr<message> message,
                                     mqtt_cpp::v5::properties props) {
-    mqtt_cpp::buffer topic_name(std::string_view(message.topic().name()));
+    mqtt_cpp::buffer topic_name(std::string_view(message->topic().data(), message->topic().size()));
+    mqtt_cpp::buffer contents(std::string_view(
+        reinterpret_cast<const char*>(message->payload().data()), message->payload().size()));
+    mqtt_cpp::publish_options pubopts(message->pubopts());
+
     auto const& idx = _subs.template get<topic_tag>();
     auto r = idx.equal_range(topic_name);
     for (; r.first != r.second; ++r.first) {
