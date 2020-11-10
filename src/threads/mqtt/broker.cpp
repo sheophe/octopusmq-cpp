@@ -12,6 +12,7 @@ const adapter_params& broker_base::adapter_params() const { return _adapter_para
 
 template <class Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
+    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
     this->_cons.erase(con);
     auto& idx = this->_subs.template get<connection_tag>();
     auto r = idx.equal_range(con);
@@ -145,6 +146,7 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
                     mqtt_cpp::qos qos_value = std::get<1>(e).get_qos();
                     std::cout << "[server] topic: " << topic << " qos: " << qos_value << std::endl;
                     res.emplace_back(mqtt_cpp::qos_to_suback_return_code(qos_value));
+                    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
                     this->_subs.emplace(std::move(topic), sp, qos_value);
                 }
                 sp->suback(packet_id, res);
@@ -154,9 +156,11 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
         ep.set_unsubscribe_handler(
             [this, wp](packet_id_t packet_id, std::vector<mqtt_cpp::buffer> topics) {
                 std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
+                std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
                 for (auto const& topic : topics) {
                     this->_subs.erase(topic);
                 }
+                _subs_lock.unlock();
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
                 sp->unsuback(packet_id);
@@ -235,10 +239,11 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
             if (packet_id) std::cout << "[server] packet_id: " << *packet_id << std::endl;
             std::cout << "[server] topic_name: " << topic_name << std::endl;
             std::cout << "[server] contents: " << contents << std::endl;
+            std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
             auto const& idx = this->_subs.template get<topic_tag>();
             auto r = idx.equal_range(topic_name);
             for (; r.first != r.second; ++r.first) {
-                mqtt_cpp::retain retain = (r.first->rap_value == mqtt_cpp::rap::retain) s
+                mqtt_cpp::retain retain = (r.first->rap_value == mqtt_cpp::rap::retain)
                                               ? pubopts.get_retain()
                                               : mqtt_cpp::retain::no;
                 r.first->con->publish(topic_name, contents,
@@ -265,6 +270,7 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
                     std::cout << "[server] topic: " << topic << " qos: " << qos_value
                               << " rap: " << rap_value << std::endl;
                     res.emplace_back(mqtt_cpp::v5::qos_to_suback_reason_code(qos_value));
+                    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
                     this->_subs.emplace(std::move(topic), sp, qos_value, rap_value);
                 }
                 sp->suback(packet_id, res);
@@ -275,9 +281,11 @@ broker<Server>::broker(const class adapter_params& adapter, message_queue& globa
                                                  std::vector<mqtt_cpp::buffer> topics,
                                                  mqtt_cpp::v5::properties) {
             std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
+            std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             for (auto const& topic : topics) {
                 this->_subs.erase(topic);
             }
+            _subs_lock.unlock();
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
             sp->unsuback(packet_id);
@@ -305,7 +313,8 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
         reinterpret_cast<const char*>(message->payload().data()), message->payload().size()));
     mqtt_cpp::publish_options pubopts(message->pubopts());
 
-    auto const& idx = this->subs.template get<topic_tag>();
+    std::lock_guard<std::mutex> _subs_lock(_subs_mutex);
+    auto const& idx = _subs.template get<topic_tag>();
     auto r = idx.equal_range(topic_name);
     for (; r.first != r.second; ++r.first) {
         r.first->con->publish(topic_name, contents,
@@ -321,6 +330,7 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message,
         reinterpret_cast<const char*>(message->payload().data()), message->payload().size()));
     mqtt_cpp::publish_options pubopts(message->pubopts());
 
+    std::lock_guard<std::mutex> _subs_lock(_subs_mutex);
     auto const& idx = _subs.template get<topic_tag>();
     auto r = idx.equal_range(topic_name);
     for (; r.first != r.second; ++r.first) {

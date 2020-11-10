@@ -11,6 +11,7 @@
 #include "mqtt_server_cpp.hpp"
 
 #include <set>
+#include <mutex>
 #include <boost/lexical_cast.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -92,6 +93,7 @@ class broker : public broker_base {
     Server _server;
     std::set<connection_sp> _connections;
     subscription_container _subs;
+    std::mutex _subs_mutex;
 
     inline void close_connection(connection_sp const& con);
 
