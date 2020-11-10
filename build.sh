@@ -1,6 +1,5 @@
 #!/bin/sh
 OCTOMQ_OPT_FLAGS=unset
-OCTOMQ_MAKE_JOBS=8
 
 usage()
 {
@@ -38,6 +37,6 @@ fi
 
 cd ./build
 cmake $OCTOMQ_OPT_FLAGS ../
-cmake --build . --target octopusmq -- -j $OCTOMQ_MAKE_JOBS
+cmake --build . --target octopusmq -- -j 8
 
 unset OCTOMQ_OPT_FLAGS OCTOMQ_MAKE_JOBS
