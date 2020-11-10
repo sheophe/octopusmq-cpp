@@ -69,7 +69,7 @@ void control::arg_help() {
 
 void control::arg_daemon() { _daemon = true; }
 
-void control::init(const int argc, const char **argv) {
+void control::run(const int argc, const char **argv) {
     string config_file_name;
     if (argc > 1)
         for (int i = 1; i < argc; ++i) {
@@ -98,17 +98,22 @@ void control::init(const int argc, const char **argv) {
     log::print_started(_daemon);
     // Initialization routines
 
-    _initialized = true;
     log::print(log_type::info, "initialized.");
+    message_queue_manager();
+
+    // Deinitialization routines
+    log::print(log_type::info, "stopped.");
 }
 
-void control::run() {}
-
-void control::stop() {}
+void control::message_queue_manager() {
+    if (not _initialized) return;
+    while (not _should_stop) {
+    }
+}
 
 void control::signal_handler(int signal) {
-    log::print(log_type::warning, "received %d signal, stopping", signal);
-    stop();
+    log::print(log_type::warning, "received %d signal, stopping...", signal);
+    _should_stop = true;
 }
 
 bool &control::initialized() { return _initialized; }

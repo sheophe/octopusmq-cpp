@@ -4,4 +4,4 @@ if [ ! -d "./build" ]; then
 fi
 cd ./build
 cmake ../
-cmake --build . --config Debug --target octopusmq -- -j 8
+cmake --build . --target octopusmq -- -j 8

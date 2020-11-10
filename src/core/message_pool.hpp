@@ -67,7 +67,7 @@ class message_notify_handle {
 
 using message_notify_map = std::map<string, std::list<message_notify_handle>>;
 
-class message_queue {
+class message_pool {
     std::mutex _mutex;
     std::queue<message> _queue;
     message_notify_map _notify_map;

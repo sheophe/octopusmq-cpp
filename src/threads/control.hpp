@@ -60,18 +60,18 @@ class control_settings {
 class control {
     static inline bool _initialized = false;
     static inline bool _daemon = false;
-    static std::thread _queue_manager_thread;
+    static inline bool _should_stop = false;
 
     static void arg_daemon();
     static void arg_help();
+
+    static void message_queue_manager();
 
     static inline std::map<string, arg_handler> _argument_map = { { "--daemon", arg_daemon },
                                                                   { "--help", arg_help } };
 
    public:
-    static void init(const int argc, const char **argv);
-    static void run();
-    static void stop();
+    static void run(const int argc, const char **argv);
     static void signal_handler(int signal);
 
     static bool &initialized();

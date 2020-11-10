@@ -16,8 +16,7 @@ int main(const int argc, const char **argv) {
     // spawns other threads as needed. Wrapping the worker function into
     // try...catch to handle fatal exceptions.
     try {
-        thread::control::init(argc, argv);
-        thread::control::run();
+        thread::control::run(argc, argv);
     } catch (const std::exception &e) {
         log::print(log_type::fatal, e.what());
         log::print_stopped(true);

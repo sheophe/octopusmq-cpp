@@ -15,7 +15,7 @@ set(LIB_MQTT_DIR ${LIB_DIR}/mqtt_cpp)
 project(octopusmq VERSION 1.0.0 LANGUAGES CXX)
 
 option(OCTOMQ_ENABLE_TLS "Enable TLS support (OpenSSL is required)" OFF)
-option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" ON)
+option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" OFF)
 
 find_package(OpenDDS REQUIRED)
 
@@ -23,11 +23,11 @@ find_package(Boost 1.66.0 REQUIRED COMPONENTS system REQUIRED)
 find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
 
 if (OCTOMQ_ENABLE_TLS)
-    message(STATUS "Configuring to support TLS")
+    message(STATUS "Configuring TLS support")
     add_definitions(-DOCTOMQ_ENABLE_TLS)
     find_package(OpenSSL REQUIRED)
 else()
-    message(STATUS "Configuring without TLS support")
+    message(STATUS "TLS configuration disabled")
 endif()
 
 # set(OPENDDS_LIBS OpenDDS::Dcps)
@@ -41,17 +41,16 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -g")
 endif()
 
 set(SRC_LIST
+    ${CORE_DIR}/log.cpp
+    ${CORE_DIR}/settings.cpp
+    ${CORE_DIR}/topic.cpp
+    ${CORE_DIR}/message_pool.cpp
     ${NETWORK_DIR}/network.cpp
     ${NETWORK_DIR}/adapter.cpp
     ${NETWORK_DIR}/adapter_factory.cpp
     ${NETWORK_DIR}/adapter_headers.hpp
     ${NETWORK_DIR}/dds/adapter.cpp
     ${NETWORK_DIR}/mqtt/adapter.cpp
-    ${CORE_DIR}/log.cpp
-    ${CORE_DIR}/settings.cpp
-    ${CORE_DIR}/topic.cpp
-    ${CORE_DIR}/event_queue.cpp
-    ${CORE_DIR}/message_queue.cpp
     ${THREADS_DIR}/control.cpp
     ${THREADS_DIR}/mqtt/broker.cpp
     ${SRC_DIR}/octopus_mq.cpp

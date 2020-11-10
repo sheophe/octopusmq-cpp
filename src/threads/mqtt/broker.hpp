@@ -1,7 +1,7 @@
 #ifndef OCTOMQ_MQTT_BROKER_H_
 #define OCTOMQ_MQTT_BROKER_H_
 
-#include "core/message_queue.hpp"
+#include "core/message_pool.hpp"
 #include "core/topic.hpp"
 #include "network/mqtt/adapter.hpp"
 #include "network/adapter.hpp"
@@ -28,10 +28,11 @@ struct connection_tag {};
 class broker_base : public adapter_interface {
    protected:
     adapter_params _adapter_params;
-    message_queue& _global_queue;
+    // Lifetime of queue referenced by _global_queue should be greater than lifetime of
+    message_pool& _global_queue;
 
    public:
-    broker_base(const class adapter_params& adapter, message_queue& global_queue);
+    broker_base(const class adapter_params& adapter, message_pool& global_queue);
 
     virtual void inject_publish(const std::shared_ptr<message> message) = 0;
 
@@ -98,7 +99,7 @@ class broker : public broker_base {
     inline void close_connection(connection_sp const& con);
 
    public:
-    broker(const class adapter_params& adapter, message_queue& global_queue);
+    broker(const class adapter_params& adapter, message_pool& global_queue);
 
     void run();
     void stop();

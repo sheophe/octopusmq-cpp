@@ -1,4 +1,4 @@
-#include "core/message_queue.hpp"
+#include "core/message_pool.hpp"
 
 namespace octopus_mq {
 
@@ -44,12 +44,12 @@ message_notify_handle &message_notify_handle::operator=(message_notify_handle &&
     return *this;
 }
 
-void message_queue::push(const message &message) {
+void message_pool::push(const message &message) {
     std::lock_guard<std::mutex> queue_lock(_mutex);
     _queue.push(message);
 }
 
-bool message_queue::pop(message &message) {
+bool message_pool::pop(message &message) {
     std::lock_guard<std::mutex> queue_lock(_mutex);
     if (_queue.empty()) return false;
     message = _queue.front();
@@ -57,7 +57,7 @@ bool message_queue::pop(message &message) {
     return true;
 }
 
-message_notify_handle &message_queue::add_notify_handle(const string &topic) {
+message_notify_handle &message_pool::add_notify_handle(const string &topic) {
     std::unique_lock<std::mutex> notify_lock(_notify_mutex);
     auto iter = _notify_map.find(topic);
     if (iter == _notify_map.end()) _notify_map[topic].push_back(message_notify_handle());
@@ -65,7 +65,7 @@ message_notify_handle &message_queue::add_notify_handle(const string &topic) {
     return _notify_map[topic].back();
 }
 
-std::list<message_notify_handle> &message_queue::get_notify_handles(const string &topic) {
+std::list<message_notify_handle> &message_pool::get_notify_handles(const string &topic) {
     return _notify_map[topic];
 }
 

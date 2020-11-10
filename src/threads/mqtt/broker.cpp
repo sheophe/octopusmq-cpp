@@ -5,7 +5,7 @@
 
 namespace octopus_mq::mqtt {
 
-broker_base::broker_base(const class adapter_params& adapter, message_queue& global_queue)
+broker_base::broker_base(const class adapter_params& adapter, message_pool& global_queue)
     : _adapter_params(adapter), _global_queue(global_queue) {}
 
 const adapter_params& broker_base::adapter_params() const { return _adapter_params; }
@@ -20,7 +20,7 @@ inline void broker<Server>::close_connection(connection_sp const& con) {
 }
 
 template <class Server>
-broker<Server>::broker(const class adapter_params& adapter, message_queue& global_queue)
+broker<Server>::broker(const class adapter_params& adapter, message_pool& global_queue)
     : broker_base(adapter, global_queue) {
     // When octopus_mq::phy gets the name defined in OCTOMQ_IFACE_NAME_ANY
     // instead of correct interface name (which means any interface should be listened),
