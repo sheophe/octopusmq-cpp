@@ -5,41 +5,40 @@
 
 namespace octopus_mq::mqtt {
 
-broker_base::broker_base(const class adapter_params& adapter, message_pool& global_queue)
-    : _adapter_params(adapter), _global_queue(global_queue) {}
-
-const adapter_params& broker_base::adapter_params() const { return _adapter_params; }
-
-template <class Server>
+template <typename Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
     std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
-    this->_cons.erase(con);
+    this->_connections.erase(con);
     auto& idx = this->_subs.template get<connection_tag>();
     auto r = idx.equal_range(con);
     idx.erase(r.first, r.second);
 }
 
-template <class Server>
-broker<Server>::broker(const class adapter_params& adapter, message_pool& global_queue)
-    : broker_base(adapter, global_queue) {
+template <typename Server>
+broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
+                       message_pool& global_queue)
+    : adapter_interface(adapter_settings, global_queue) {
     // When octopus_mq::phy gets the name defined in OCTOMQ_IFACE_NAME_ANY
     // instead of correct interface name (which means any interface should be listened),
     // it stores address defined in OCTOMQ_NULL_IP as an interface IP address.
-    if (_adapter_params.phy.ip() == OCTOMQ_NULL_IP) {
-        _server = Server(
-            boost::asio::ip::tcp::endpoint(boost::asio::ip::tcp::v4(),
-                                           boost::lexical_cast<uint16_t>(_adapter_params.port)),
-            _ioc);
+    if (_adapter_settings->phy().ip() == OCTOMQ_NULL_IP) {
+        _server =
+            std::make_unique<Server>(boost::asio::ip::tcp::endpoint(
+                                         boost::asio::ip::tcp::v4(),
+                                         boost::lexical_cast<uint16_t>(_adapter_settings->port())),
+                                     _ioc);
     } else {
         boost::asio::ip::tcp::resolver resolver(_ioc);
-        boost::asio::ip::tcp::resolver::query query(_adapter_params.phy.ip(), _adapter_params.port);
-        _server = Server(*resolver.resolve(query), _ioc);
+        _server =
+            std::make_unique<Server>(*resolver.resolve((_adapter_settings->phy().ip_string(),
+                                                        std::to_string(_adapter_settings->port()))),
+                                     _ioc);
     }
 
-    _server.set_error_handler(
+    _server->set_error_handler(
         [](mqtt_cpp::error_code ec) { log::print(log_type::error, ec.message()); });
 
-    _server.set_accept_handler([this](connection_sp spep) {
+    _server->set_accept_handler([this](connection_sp spep) {
         auto& ep = *spep;
         std::weak_ptr<connection> wp(spep);
 
@@ -123,7 +122,7 @@ broker<Server>::broker(const class adapter_params& adapter, message_pool& global
             if (packet_id) std::cout << "[server] packet_id: " << *packet_id << std::endl;
             std::cout << "[server] topic_name: " << topic_name << std::endl;
             std::cout << "[server] contents: " << contents << std::endl;
-            auto const& idx = this->subs.template get<topic_tag>();
+            auto const& idx = this->_subs.template get<topic_tag>();
             auto r = idx.equal_range(topic_name);
             for (; r.first != r.second; ++r.first) {
                 r.first->con->publish(topic_name, contents,
@@ -294,19 +293,19 @@ broker<Server>::broker(const class adapter_params& adapter, message_pool& global
     });
 }
 
-template <class Server>
+template <typename Server>
 void broker<Server>::run() {
-    _server.listen();
+    _server->listen();
     _ioc.run();
 }
 
-template <class Server>
+template <typename Server>
 void broker<Server>::stop() {
-    _server.close();
+    _server->close();
     _ioc.stop();
 }
 
-template <class Server>
+template <typename Server>
 void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
     mqtt_cpp::buffer topic_name(std::string_view(message->topic().data(), message->topic().size()));
     mqtt_cpp::buffer contents(std::string_view(
@@ -322,7 +321,7 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
     }
 }
 
-template <class Server>
+template <typename Server>
 void broker<Server>::inject_publish(const std::shared_ptr<message> message,
                                     mqtt_cpp::v5::properties props) {
     mqtt_cpp::buffer topic_name(std::string_view(message->topic().data(), message->topic().size()));
@@ -341,5 +340,12 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message,
                               std::min(r.first->qos_value, pubopts.get_qos()) | retain, props);
     }
 }
+
+template class broker<mqtt_cpp::server<>>;
+template class broker<mqtt_cpp::server_ws<>>;
+#ifdef OCTOMQ_ENABLE_TLS
+template class broker<mqtt_cpp::server_tls<>>;
+template class broker<mqtt_cpp::server_tls_ws<>>;
+#endif
 
 }  // namespace octopus_mq::mqtt

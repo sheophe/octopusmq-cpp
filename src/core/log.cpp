@@ -32,10 +32,10 @@ void log::print_time(const log_type &type) {
             } else
                 timestamp -= _start_timestamp;
         }
-        std::cout << std::dec << std::right << std::setw(14) << std::setfill('0')
-                  << std::to_string(timestamp).insert(10, ".") << ": ";
+        std::cout << OCTOMQ_LINE_BEGIN << std::dec << std::right << std::setw(14)
+                  << std::setfill('0') << std::to_string(timestamp).insert(10, ".") << ": ";
     } else
-        std::cout << std::setw(16) << std::setfill(' ') << " ";
+        std::cout << OCTOMQ_LINE_BEGIN << std::setw(16) << std::setfill(' ') << " ";
 }
 
 void log::print_started(const bool daemon) {
@@ -66,6 +66,7 @@ void log::print(const log_type &type, const char *format, ...) {
 void log::print(const log_type &type, const string &message) {
     if (not message.empty()) {
         std::lock_guard<std::mutex> log_lock(_mutex);
+        print_time(type);
         std::cout << _log_prefix.find(type)->second << message << OCTOMQ_RESET << std::endl;
     }
 }

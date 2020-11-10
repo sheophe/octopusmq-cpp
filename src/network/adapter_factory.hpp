@@ -6,6 +6,7 @@
 #include <string>
 
 #include "json.hpp"
+#include "core/message_pool.hpp"
 #include "network/adapter.hpp"
 #include "network/adapter_headers.hpp"
 #include "network/network.hpp"
@@ -14,13 +15,17 @@ namespace octopus_mq {
 
 using std::string, std::shared_ptr;
 
-class adapter_factory {
+class adapter_settings_factory {
    public:
-    static shared_ptr<adapter_settings> from_json(const nlohmann::json &json);
-    // static const nlohmann::json create_json(const shared_ptr<adapter_settings> &adapter_settings,
-    //                                         const protocol_type &protocol);
+    static adapter_settings_ptr from_json(const nlohmann::json &json);
 
     static const protocol_type &protocol_from_name(const string &name);
+};
+
+class adapter_interface_factory {
+   public:
+    static adapter_iface_ptr from_settings(adapter_settings_ptr settings,
+                                           message_pool &message_pool);
 };
 
 }  // namespace octopus_mq

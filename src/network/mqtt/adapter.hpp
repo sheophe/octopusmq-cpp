@@ -11,15 +11,11 @@
 #define OCTOMQ_MQTT_ADAPTER_ROLE_BROKER "broker"
 #define OCTOMQ_MQTT_ADAPTER_ROLE_CLIENT "client"
 
-namespace octopus_mq {
+namespace octopus_mq::mqtt {
 
 using std::string;
 
-enum class mqtt_adapter_role { broker, client };
-
-enum class mqtt_version { v3, v5 };
-
-class mqtt_adapter_settings : public adapter_settings {
+class adapter_settings : public octopus_mq::adapter_settings {
     transport_type _transport;
     address _remote_address;  // is used only when adapter is in client mode
     mqtt_adapter_role _role;
@@ -33,12 +29,13 @@ class mqtt_adapter_settings : public adapter_settings {
     static inline const std::map<string, transport_type> _transport_from_name = {
         { OCTOMQ_ADAPTER_TRANSPORT_TCP, transport_type::tcp },
         { OCTOMQ_ADAPTER_TRANSPORT_TLS, transport_type::tls },
-        { OCTOMQ_ADAPTER_TRANSPORT_WS, transport_type::websocket }
+        { OCTOMQ_ADAPTER_TRANSPORT_WS, transport_type::websocket },
+        { OCTOMQ_ADAPTER_TRANSPORT_TLSWS, transport_type::tls_websocket }
     };
 
    public:
-    mqtt_adapter_settings();
-    mqtt_adapter_settings(const nlohmann::json &json);
+    adapter_settings();
+    adapter_settings(const nlohmann::json &json);
 
     void transport(const transport_type &transport);
     void transport(const string &transport);
@@ -52,6 +49,8 @@ class mqtt_adapter_settings : public adapter_settings {
     const std::list<string> &scope() const;
 };
 
-}  // namespace octopus_mq
+using adapter_settings_ptr = std::shared_ptr<adapter_settings>;
+
+}  // namespace octopus_mq::mqtt
 
 #endif

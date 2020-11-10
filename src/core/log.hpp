@@ -24,6 +24,7 @@
 #define OCTOMQ_WHITE "\u001b[37m"
 #define OCTOMQ_BOLD "\u001b[1m"
 #define OCTOMQ_RESET "\u001b[0m"
+#define OCTOMQ_LINE_BEGIN '\r'
 
 #if defined(__APPLE__) && defined(OCTOMQ_USE_EMOJI_START_MESSAGE)
 #define OCTOMQ_ICON ("🐙 ")

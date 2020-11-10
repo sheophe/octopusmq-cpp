@@ -6,6 +6,7 @@
 #include <string>
 
 #include "json.hpp"
+#include "core/message_pool.hpp"
 #include "network/network.hpp"
 
 #define OCTOMQ_ADAPTER_FIELD_INTERFACE "interface"
@@ -24,6 +25,7 @@
 #define OCTOMQ_ADAPTER_TRANSPORT_TCP "tcp"
 #define OCTOMQ_ADAPTER_TRANSPORT_TLS "tls"
 #define OCTOMQ_ADAPTER_TRANSPORT_WS "websocket"
+#define OCTOMQ_ADAPTER_TRANSPORT_TLSWS "tls-websocket"
 
 namespace octopus_mq {
 
@@ -39,6 +41,7 @@ class adapter_settings {
     port_int _port;
     protocol_type _protocol;
     string _name;
+    nlohmann::json _json;
 
     static inline const std::map<protocol_type, string> _protocol_name = {
         { protocol_type::mqtt, "mqtt" }, { protocol_type::dds, "dds" }
@@ -57,18 +60,35 @@ class adapter_settings {
     const port_int &port() const;
     const protocol_type &protocol() const;
     const string &name() const;
+    const nlohmann::json &json() const;
 
     bool compare_binding(const ip_int ip, const port_int port) const;
     const string binging_name() const;
+    const string &protocol_name() const;
 
     static const string &protocol_name(const protocol_type &protocol);
 };
 
+using adapter_settings_ptr = std::shared_ptr<adapter_settings>;
+
 class adapter_interface {
+   protected:
+    adapter_settings_ptr _adapter_settings;
+    // Lifetime of message pool referenced by _global_msg_pool should be greater than lifetime of
+    // adapter interface instance.
+    message_pool &_global_msg_pool;
+
    public:
+    adapter_interface(const adapter_settings_ptr adapter_settings, message_pool &global_msg_pool);
+
     virtual void run() = 0;
     virtual void stop() = 0;
+    virtual void inject_publish(const std::shared_ptr<message> message) = 0;
 };
+
+using adapter_iface_ptr = std::shared_ptr<adapter_interface>;
+using adapter_pool = std::vector<std::pair<adapter_settings_ptr, adapter_iface_ptr>>;
+
 
 }  // namespace octopus_mq
 

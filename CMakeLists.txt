@@ -57,8 +57,9 @@ set(SRC_LIST
     ${NETWORK_DIR}/adapter_headers.hpp
     ${NETWORK_DIR}/dds/adapter.cpp
     ${NETWORK_DIR}/mqtt/adapter.cpp
-    ${THREADS_DIR}/control.cpp
+    ${THREADS_DIR}/dds/peer.cpp
     ${THREADS_DIR}/mqtt/broker.cpp
+    ${THREADS_DIR}/control.cpp
     ${SRC_DIR}/octopus_mq.cpp
 )
 
@@ -79,4 +80,4 @@ if (UNIX AND NOT APPLE)
 endif()
 
 # OPENDDS_TARGET_SOURCES(${PROJECT_NAME} "${THREADS_DIR}/dds/message.idl" OPENDDS_IDL_OPTIONS "-Lc++11")
-target_link_libraries(${PROJECT_NAME} pthread)
+target_link_libraries(${PROJECT_NAME} pthread Boost::system)

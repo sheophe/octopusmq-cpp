@@ -100,7 +100,7 @@ phy::phy(const ip_int &ip) : _ip(ip), _name(phy_name()) {}
 string phy::phy_name() {
     ifaddrs *interface = nullptr;
     string name;
-    if (getifaddrs(&interface) < 0) return OCTOMQ_NULL_IP;
+    if (getifaddrs(&interface) < 0) return name;
     for (ifaddrs *if_iter = interface; if_iter != nullptr; if_iter = if_iter->ifa_next)
         if (if_iter->ifa_addr != nullptr and if_iter->ifa_name != nullptr and
             if_iter->ifa_addr->sa_family == AF_INET and
@@ -127,8 +127,6 @@ void phy::phy_addresses() {
     freeifaddrs(interface);
 }
 
-ip_int phy::broadcast_address() const { return _ip | ~_netmask; }
-
 void phy::name(const string &name) {
     _name = name;
     if (_name == OCTOMQ_IFACE_NAME_ANY) {
@@ -153,14 +151,7 @@ void phy::ip(const ip_int &ip) {
     _ip = ip;
     if (_ip != OCTOMQ_NULL_IP) {
         _name = phy_name();
-        if (_name.empty()) {
-            char addr_str[INET_ADDRSTRLEN];
-            struct in_addr ia;
-            memset(&ia, 0, sizeof(ia));
-            ia.s_addr = (in_addr_t)_ip;
-            if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
-                throw std::runtime_error("interface not found: " + string(addr_str));
-        }
+        if (_name.empty()) throw std::runtime_error("interface not found: " + ip_string());
         phy_addresses();
     }
 }
@@ -169,12 +160,19 @@ const string &phy::name() const { return _name; }
 
 const ip_int &phy::ip() const { return _ip; }
 
+const string phy::ip_string() const {
+    char addr_str[INET_ADDRSTRLEN];
+    struct in_addr ia;
+    memset(&ia, 0, sizeof(ia));
+    ia.s_addr = (in_addr_t)_ip;
+    if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
+        return string(addr_str);
+    else
+        return string();
+}
+
 const ip_int &phy::netmask() const { return _netmask; }
 
-adapter_params::adapter_params()
-    : phy(),
-      port(OCTOMQ_NULL_PORT),
-      transport(transport_type::tcp),
-      protocol(protocol_type::mqtt) {}
+ip_int phy::broadcast_address() const { return _ip | ~_netmask; }
 
 }  // namespace octopus_mq

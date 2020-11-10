@@ -1,6 +1,8 @@
 #include "network/adapter_factory.hpp"
 
 #include "core/error.hpp"
+#include "threads/mqtt/broker.hpp"
+#include "threads/dds/peer.hpp"
 
 namespace octopus_mq {
 
@@ -8,7 +10,7 @@ static inline const std::map<string, protocol_type> _protocol_from_name = {
     { "mqtt", protocol_type::mqtt }, { "dds", protocol_type::dds }
 };
 
-shared_ptr<adapter_settings> adapter_factory::from_json(const nlohmann::json &json) {
+adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &json) {
     if (not json.contains(OCTOMQ_ADAPTER_FIELD_PROTOCOL))
         throw missing_field_error(OCTOMQ_ADAPTER_FIELD_PROTOCOL);
 
@@ -21,9 +23,9 @@ shared_ptr<adapter_settings> adapter_factory::from_json(const nlohmann::json &js
             // Calling protocol-specific constructor
             switch (protocol) {
                 case protocol_type::mqtt:
-                    return std::make_shared<mqtt_adapter_settings>(json);
+                    return std::make_shared<mqtt::adapter_settings>(json);
                 case protocol_type::dds:
-                    return std::make_shared<dds_adapter_settings>(json);
+                    return std::make_shared<dds::adapter_settings>(json);
                 default:
                     throw unknown_protocol_error(protocol_name);
             }
@@ -31,6 +33,52 @@ shared_ptr<adapter_settings> adapter_factory::from_json(const nlohmann::json &js
             throw unknown_protocol_error(protocol_name);
     } else
         throw field_type_error(OCTOMQ_ADAPTER_FIELD_PROTOCOL);
+}
+
+adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr settings,
+                                                           message_pool &message_pool) {
+    if (settings == nullptr) throw adapter_not_initialized();
+
+    // Protocol is checked in adapter_settings_factory.
+    // Only adapter with valid protocols are stored in settings
+    switch (settings->protocol()) {
+        case protocol_type::mqtt: {
+            mqtt::adapter_settings_ptr mqtt_settings =
+                std::static_pointer_cast<mqtt::adapter_settings>(settings);
+
+            switch (mqtt_settings->transport()) {
+                case transport_type::tcp:
+                    return std::make_shared<mqtt::broker<mqtt_cpp::server<>>>(settings,
+                                                                              message_pool);
+                case transport_type::websocket:
+                    return std::make_shared<mqtt::broker<mqtt_cpp::server_ws<>>>(settings,
+                                                                                 message_pool);
+#ifdef OCTOMQ_ENABLE_TLS
+                case transport_type::tls:
+                    return std::make_shared<mqtt::broker<mqtt_cpp::server_tls<>>>(settings,
+                                                                                  message_pool);
+                case transport_type::tls_websocket:
+                    return std::make_shared<mqtt::broker<mqtt_cpp::server_tls_ws<>>>(settings,
+                                                                                     message_pool);
+#else
+                case transport_type::tls:
+                case transport_type::tls_websocket:
+#endif
+                case transport_type::udp:
+                    throw adapter_transport_error(settings->name(), settings->protocol_name());
+            }
+        };
+        case protocol_type::dds: {
+            dds::adapter_settings_ptr dds_settings =
+                std::static_pointer_cast<dds::adapter_settings>(settings);
+
+            if (dds_settings->transport() != transport_type::udp &&
+                dds_settings->transport() != transport_type::tcp)
+                throw adapter_transport_error(settings->name(), settings->protocol_name());
+
+            return std::make_shared<dds::peer>(settings, message_pool);
+        };
+    }
 }
 
 }  // namespace octopus_mq

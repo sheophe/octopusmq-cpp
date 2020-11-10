@@ -16,7 +16,7 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const string &
     : _phy(octopus_mq::phy(phy)), _port(port), _protocol(protocol) {}
 
 adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann::json &json)
-    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol) {
+    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _json(json) {
     // Parsing interface
     if (not json.contains(OCTOMQ_ADAPTER_FIELD_INTERFACE))
         throw missing_field_error(OCTOMQ_ADAPTER_FIELD_INTERFACE);
@@ -61,6 +61,10 @@ const protocol_type &adapter_settings::protocol() const { return _protocol; }
 
 const string &adapter_settings::name() const { return _name; }
 
+const string &adapter_settings::protocol_name() const { return protocol_name(_protocol); }
+
+const nlohmann::json &adapter_settings::json() const { return _json; }
+
 bool adapter_settings::compare_binding(const ip_int ip, const port_int port) const {
     return (ip == _phy.ip()) and (port == _port);
 }
@@ -76,5 +80,9 @@ const string &adapter_settings::protocol_name(const protocol_type &protocol) {
     else
         return unknwon_protocol;
 }
+
+adapter_interface::adapter_interface(const adapter_settings_ptr adapter_settings,
+                                     message_pool &global_msg_pool)
+    : _adapter_settings(adapter_settings), _global_msg_pool(global_msg_pool) {}
 
 }  // namespace octopus_mq

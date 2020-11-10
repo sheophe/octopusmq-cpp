@@ -15,11 +15,19 @@ namespace octopus_mq {
 
 using std::string;
 
-enum class protocol_type { mqtt, dds, stop };
+enum class protocol_type { mqtt, dds };
+
+namespace mqtt {
+
+    enum class mqtt_adapter_role { broker, client };
+
+    enum class mqtt_version { v3, v5 };
+
+}  // namespace mqtt
 
 enum class tx_type { unicast, multicast, broadcast };
 
-enum class transport_type { udp, tcp, tls, websocket };
+enum class transport_type { udp, tcp, tls, websocket, tls_websocket };
 
 enum class network_event_type { send, receive };
 
@@ -74,18 +82,9 @@ class phy {
 
     const string &name() const;
     const ip_int &ip() const;
+    const string ip_string() const;
     const ip_int &netmask() const;
     ip_int broadcast_address() const;
-};
-
-class adapter_params {
-   public:
-    phy phy;
-    port_int port;
-    transport_type transport;
-    protocol_type protocol;
-
-    adapter_params();
 };
 
 }  // namespace octopus_mq

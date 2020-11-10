@@ -25,27 +25,13 @@ namespace multi_index = boost::multi_index;
 struct topic_tag {};
 struct connection_tag {};
 
-class broker_base : public adapter_interface {
-   protected:
-    adapter_params _adapter_params;
-    // Lifetime of queue referenced by _global_queue should be greater than lifetime of
-    message_pool& _global_queue;
-
-   public:
-    broker_base(const class adapter_params& adapter, message_pool& global_queue);
-
-    virtual void inject_publish(const std::shared_ptr<message> message) = 0;
-
-    const adapter_params& adapter_params() const;
-};
-
 // Class Server must be one of the following:
 // mqtt_cpp::server<>
 // mqtt_cpp::server_ws<>
 // mqtt_cpp::server_tls<>
 // mqtt_cpp::server_tls_ws<>
-template <class Server>
-class broker : public broker_base {
+template <typename Server>
+class broker final : public adapter_interface {
     static_assert(std::is_same<Server, mqtt_cpp::server<>>::value or
                       std::is_same<Server, mqtt_cpp::server_ws<>>::value,
                   "unsupported server class");
@@ -91,7 +77,7 @@ class broker : public broker_base {
 
    private:
     boost::asio::io_context _ioc;
-    Server _server;
+    std::unique_ptr<Server> _server;
     std::set<connection_sp> _connections;
     subscription_container _subs;
     std::mutex _subs_mutex;
@@ -99,7 +85,7 @@ class broker : public broker_base {
     inline void close_connection(connection_sp const& con);
 
    public:
-    broker(const class adapter_params& adapter, message_pool& global_queue);
+    broker(const octopus_mq::adapter_settings_ptr adapter_settings, message_pool& global_queue);
 
     void run();
     void stop();

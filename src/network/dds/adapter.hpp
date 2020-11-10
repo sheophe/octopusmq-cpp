@@ -8,11 +8,11 @@
 #include "network/adapter.hpp"
 #include "network/network.hpp"
 
-namespace octopus_mq {
+namespace octopus_mq::dds {
 
 using std::string;
 
-class dds_adapter_settings : public adapter_settings {
+class adapter_settings : public octopus_mq::adapter_settings {
     transport_type _transport;
     std::list<string> _scope;
 
@@ -22,8 +22,8 @@ class dds_adapter_settings : public adapter_settings {
     };
 
    public:
-    dds_adapter_settings();
-    dds_adapter_settings(const nlohmann::json &json);
+    adapter_settings();
+    adapter_settings(const nlohmann::json &json);
 
     void transport(const transport_type &transport);
     void transport(const string &transport);
@@ -34,6 +34,8 @@ class dds_adapter_settings : public adapter_settings {
     const std::list<string> &scope() const;
 };
 
-}  // namespace octopus_mq
+using adapter_settings_ptr = std::shared_ptr<dds::adapter_settings>;
+
+}  // namespace octopus_mq::dds
 
 #endif

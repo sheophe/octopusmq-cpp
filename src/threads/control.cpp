@@ -2,6 +2,7 @@
 
 #include <errno.h>
 
+#include <chrono>
 #include <filesystem>
 #include <iostream>
 #include <stdexcept>
@@ -9,11 +10,12 @@
 
 #include "core/log.hpp"
 #include "core/settings.hpp"
+#include "network/adapter_factory.hpp"
 
 #define OCTOMQ_DEFAULT_CONTROL_PORT (18888)
 #define OCTOMQ_DEFAULT_CONTROL_TOPIC "$SYS/config/octopusmq"
 
-namespace octopus_mq::thread {
+namespace octopus_mq {
 
 control_settings::control_settings()
     : _phy(),
@@ -69,6 +71,30 @@ void control::arg_help() {
 
 void control::arg_daemon() { _daemon = true; }
 
+void control::daemonize() {
+    log::print(log_type::fatal, "daemonization is not supported in current version of octopusmq.");
+    exit(1);
+}
+
+void control::initialize_adapters() {
+    for (auto &adapter : _adapter_pool)
+        adapter.second = adapter_interface_factory::from_settings(adapter.first, _message_pool);
+}
+
+void control::shutdown_adapters() {
+    for (auto &adapter : _adapter_pool) adapter.second.reset();
+    _adapter_pool.clear();
+}
+
+void control::stop_signals(const std::vector<int> signals) {
+    for (int sig_n : signals) signal(sig_n, signal_handler);
+}
+
+void control::signal_handler(int signal) {
+    log::print(log_type::warning, "received signal \"%s\", stopping...", strsignal(signal));
+    _should_stop = true;
+}
+
 void control::run(const int argc, const char **argv) {
     string config_file_name;
     if (argc > 1)
@@ -86,7 +112,7 @@ void control::run(const int argc, const char **argv) {
                     throw std::runtime_error("path does not exist: " + config_file_name);
                 if (not std::filesystem::is_regular_file(config_file_name))
                     throw std::runtime_error("not a file: " + config_file_name);
-                settings::load(config_file_name);
+                settings::load(config_file_name, _adapter_pool);
             } else
                 throw std::runtime_error("misleading option: " + string(argv[i]));
         }
@@ -95,27 +121,33 @@ void control::run(const int argc, const char **argv) {
         return log::print_help();
     }
 
+    if (_daemon) daemonize();
     log::print_started(_daemon);
-    // Initialization routines
 
+    initialize_adapters();
     log::print(log_type::info, "initialized.");
-    message_queue_manager();
 
-    // Deinitialization routines
-    log::print(log_type::info, "stopped.");
+    // Following functions implements a loop of the main thread.
+    // The loop is running as long as _should_stop == false.
+    // When signal is received
+    message_pool_manager();
+
+    shutdown_adapters();
+    // If _should_stop is false but we ended up being here, that means the main loop has exited due
+    // to an error.
+    if (_initialized) log::print_stopped(not _should_stop);
 }
 
-void control::message_queue_manager() {
+void control::message_pool_manager() {
     if (not _initialized) return;
     while (not _should_stop) {
+        try {
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        } catch (const std::runtime_error &re) {
+            log::print(log_type::fatal, re.what());
+            break;
+        }
     }
 }
 
-void control::signal_handler(int signal) {
-    log::print(log_type::warning, "received %d signal, stopping...", signal);
-    _should_stop = true;
-}
-
-bool &control::initialized() { return _initialized; }
-
-}  // namespace octopus_mq::thread
+}  // namespace octopus_mq

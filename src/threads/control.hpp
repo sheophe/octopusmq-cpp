@@ -1,6 +1,8 @@
 #ifndef OCTOMQ_CONTROL_THREAD_H_
 #define OCTOMQ_CONTROL_THREAD_H_
 
+#include <signal.h>
+
 #include <cstdint>
 #include <map>
 #include <string>
@@ -10,8 +12,9 @@
 
 #include "network/adapter.hpp"
 #include "network/network.hpp"
+#include "core/message_pool.hpp"
 
-namespace octopus_mq::thread {
+namespace octopus_mq {
 
 using std::string;
 
@@ -62,21 +65,27 @@ class control {
     static inline bool _daemon = false;
     static inline bool _should_stop = false;
 
+    static inline message_pool _message_pool = message_pool();
+    static inline adapter_pool _adapter_pool = adapter_pool();
+
     static void arg_daemon();
     static void arg_help();
+    static void daemonize();
+    static void initialize_adapters();
+    static void shutdown_adapters();
 
-    static void message_queue_manager();
+    static void message_pool_manager();  // Main thread routine
 
     static inline std::map<string, arg_handler> _argument_map = { { "--daemon", arg_daemon },
                                                                   { "--help", arg_help } };
 
    public:
-    static void run(const int argc, const char **argv);
+    static void stop_signals(const std::vector<int> signals);
     static void signal_handler(int signal);
 
-    static bool &initialized();
+    static void run(const int argc, const char **argv);
 };
 
-}  // namespace octopus_mq::thread
+}  // namespace octopus_mq
 
 #endif
