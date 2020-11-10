@@ -32,7 +32,8 @@ do
 done
 
 if [ ! -d "./build" ]; then
-    mkdir build/
+    rm -f ./build
+    mkdir ./build/
 fi
 
 cd ./build
