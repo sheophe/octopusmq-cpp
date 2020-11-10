@@ -24,8 +24,6 @@ do
         --help)
             usage
             ;;
-        -j)
-            ;;
         *)
             echo "error: unknown option $var"
             usage
