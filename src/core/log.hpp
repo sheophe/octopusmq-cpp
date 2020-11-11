@@ -65,9 +65,8 @@ class log {
     static void print_empty_line();
     static void print(const log_type &type, const char *format, ...);
     static void print(const log_type &type, const string &message);
-    static void print_event(const phy &phy, const address &remote_address, const string &client_id,
-                            const string &protocol_name, const port_int &local_port,
-                            const string &adapter_role, const network_event_type &event_type,
+    static void print_event(const string &adapter_name, const address &remote_address,
+                            const string &client_id, const network_event_type &event_type,
                             const string &action);
     static void print_action(const network_event_type &event_type, const string &action);
     static void print_action(const network_event_type &event_type, const string &action,

@@ -104,7 +104,7 @@ void control::print_adapters() {
     log::print(log_type::info, "running %lu %s:", pool_size,
                (pool_size > 1) ? "adapters" : "adapter");
     for (auto &adapter : _adapter_pool)
-        log::print(log_type::more, adapter.first->name() + OCTOMQ_WHITE + " (" +
+        log::print(log_type::more, adapter.first->name() + OCTOMQ_WHITE + " (listening on " +
                                        adapter.first->phy().ip_string() + ':' +
                                        std::to_string(adapter.first->port()) + ')' + OCTOMQ_RESET);
     log::print_empty_line();

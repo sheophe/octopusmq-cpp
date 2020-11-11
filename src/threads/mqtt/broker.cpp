@@ -3,9 +3,6 @@
 
 #include <boost/asio/ip/address.hpp>
 
-#define OCTOMQ_MQTT_BROKER_ROLE "broker"
-#define OCTOMQ_MQTT_PROTOCOL_NAME "mqtt"
-
 #define OCTOMQ_MQTT_CONNECT_S "connect"
 #define OCTOMQ_MQTT_CONNACK_S "connack"
 #define OCTOMQ_MQTT_PUBLISH_S "publish"
@@ -108,15 +105,11 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
         ep.set_pingreq_handler([this, wp]() {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PINGREQ_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PINGREQ_S);
             sp->pingresp();
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send,
-                             OCTOMQ_MQTT_PINGRESP_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::send, OCTOMQ_MQTT_PINGRESP_S);
             return true;
         });
 
@@ -131,25 +124,19 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             this->_connections.insert(sp);
             this->_meta[sp].client_id = client_id;
             this->_meta[sp].protocol_version = version::v3;
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_CONNECT_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_CONNECT_S);
             sp->connack(false, mqtt_cpp::connect_return_code::accepted);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send,
-                             OCTOMQ_MQTT_CONNACK_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::send, OCTOMQ_MQTT_CONNACK_S);
             return true;
         });
 
         ep.set_disconnect_handler([this, wp]() {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_DISCONNECT_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_DISCONNECT_S);
             this->close_connection(sp);
             return true;
         });
@@ -157,40 +144,32 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
         ep.set_puback_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBACK_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBACK_S);
             return true;
         });
 
         ep.set_pubrec_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBREC_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBREC_S);
             return true;
         });
 
         ep.set_pubrel_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBREL_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBREL_S);
             return true;
         });
 
         ep.set_pubcomp_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBCOMP_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBCOMP_S);
             return true;
         });
 
@@ -200,8 +179,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
             log::print_event(
-                _adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(), OCTOMQ_MQTT_BROKER_ROLE,
+                _adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
                 network_event_type::receive,
                 OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
@@ -213,8 +191,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
                 address remote_address(llre.address().to_string(), llre.port());
                 log::print_event(
-                    _adapter_settings->phy(), remote_address, _meta[r.first->con].client_id,
-                    OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(), OCTOMQ_MQTT_BROKER_ROLE,
+                    _adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
                     network_event_type::send,
                     OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             }
@@ -229,10 +206,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 std::vector<std::tuple<mqtt_cpp::buffer, mqtt_cpp::subscribe_options>> entries) {
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                                 OCTOMQ_MQTT_SUBSCRIBE_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::receive, OCTOMQ_MQTT_SUBSCRIBE_S);
                 std::vector<mqtt_cpp::suback_return_code> res;
                 res.reserve(entries.size());
                 for (auto const& e : entries) {
@@ -243,10 +218,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                     this->_subs.emplace(std::move(topic), sp, qos_value);
                 }
                 sp->suback(packet_id, res);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send,
-                                 OCTOMQ_MQTT_SUBACK_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::send, OCTOMQ_MQTT_SUBACK_S);
                 return true;
             });
 
@@ -254,18 +227,14 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             [this, wp](packet_id_t packet_id, std::vector<mqtt_cpp::buffer> topics) {
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                                 OCTOMQ_MQTT_UNSUBSCRIBE_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::receive, OCTOMQ_MQTT_UNSUBSCRIBE_S);
                 std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
                 for (auto const& topic : topics) this->_subs.erase(topic);
                 _subs_lock.unlock();
                 sp->unsuback(packet_id);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send,
-                                 OCTOMQ_MQTT_UNSUBACK_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::send, OCTOMQ_MQTT_UNSUBACK_S);
                 return true;
             });
 
@@ -281,15 +250,11 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 this->_connections.insert(sp);
                 this->_meta[sp].client_id = client_id;
                 this->_meta[sp].protocol_version = version::v5;
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                                 OCTOMQ_MQTT_CONNECT_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::receive, OCTOMQ_MQTT_CONNECT_S);
                 sp->connack(false, mqtt_cpp::v5::connect_reason_code::success);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send,
-                                 OCTOMQ_MQTT_CONNACK_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::send, OCTOMQ_MQTT_CONNACK_S);
                 return true;
             });
 
@@ -298,10 +263,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                        mqtt_cpp::v5::properties) {
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                                 OCTOMQ_MQTT_DISCONNECT_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::receive, OCTOMQ_MQTT_DISCONNECT_S);
                 this->close_connection(sp);
                 return true;
             });
@@ -311,10 +274,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                             mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBACK_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBACK_S);
             return true;
         });
 
@@ -323,10 +284,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                             mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBREC_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBREC_S);
             return true;
         });
 
@@ -335,10 +294,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                             mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBREL_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBREL_S);
             return true;
         });
 
@@ -347,10 +304,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                              mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_PUBCOMP_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_PUBCOMP_S);
             return true;
         });
 
@@ -361,8 +316,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
             log::print_event(
-                _adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(), OCTOMQ_MQTT_BROKER_ROLE,
+                _adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
                 network_event_type::receive,
                 OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
@@ -378,8 +332,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
                 address remote_address(llre.address().to_string(), llre.port());
                 log::print_event(
-                    _adapter_settings->phy(), remote_address, _meta[r.first->con].client_id,
-                    OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(), OCTOMQ_MQTT_BROKER_ROLE,
+                    _adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
                     network_event_type::send,
                     OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             }
@@ -395,10 +348,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 mqtt_cpp::v5::properties) {
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                                 OCTOMQ_MQTT_SUBSCRIBE_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::receive, OCTOMQ_MQTT_SUBSCRIBE_S);
                 std::vector<mqtt_cpp::v5::suback_reason_code> res;
                 res.reserve(entries.size());
                 for (auto const& e : entries) {
@@ -410,10 +361,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                     this->_subs.emplace(std::move(topic), sp, qos_value, rap_value);
                 }
                 sp->suback(packet_id, res);
-                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send,
-                                 OCTOMQ_MQTT_SUBACK_S);
+                log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                                 network_event_type::send, OCTOMQ_MQTT_SUBACK_S);
                 return true;
             });
 
@@ -422,18 +371,14 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                                  mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive,
-                             OCTOMQ_MQTT_UNSUBSCRIBE_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::receive, OCTOMQ_MQTT_UNSUBSCRIBE_S);
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             for (auto const& topic : topics) this->_subs.erase(topic);
             _subs_lock.unlock();
             sp->unsuback(packet_id);
-            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
-                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
-                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send,
-                             OCTOMQ_MQTT_UNSUBACK_S);
+            log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
+                             network_event_type::send, OCTOMQ_MQTT_UNSUBACK_S);
             return true;
         });
     });

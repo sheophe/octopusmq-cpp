@@ -103,14 +103,11 @@ void log::print_action(const network_event_type &event_type, const string &actio
         std::cout << OCTOMQ_WHITE << " (" << client_id << ')' << OCTOMQ_RESET << std::endl;
 }
 
-void log::print_event(const phy &phy, const address &remote_address, const string &client_id,
-                      const string &protocol_name, const port_int &local_port,
-                      const string &adapter_role, const network_event_type &event_type,
+void log::print_event(const string &adapter_name, const address &remote_address,
+                      const string &client_id, const network_event_type &event_type,
                       const string &action) {
     std::lock_guard<std::mutex> log_lock(_mutex);
     print_time(log_type::more);
-    string adapter_name = string('[' + phy.name() + ':' + std::to_string(local_port) + "] " +
-                                 protocol_name + ' ' + adapter_role + ':');
     if (_last_adapter_name != adapter_name) {
         std::cout << OCTOMQ_BOLD << std::left << std::setw(35) << std::setfill(' ') << adapter_name
                   << OCTOMQ_RESET << '\n';

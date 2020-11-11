@@ -7,6 +7,14 @@
             "port": 1883,
             "role": "broker",
             "scope": "#"
+        },
+        {
+            "interface": "en0",
+            "protocol": "mqtt",
+            "transport": "websocket",
+            "port": 9001,
+            "role": "broker",
+            "scope": "#"
         }
     ],
     "forwarders": [

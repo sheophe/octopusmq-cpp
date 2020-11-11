@@ -56,6 +56,8 @@ class adapter_settings {
     void phy(const class phy &phy);
     void phy(const string &phy);
     void port(const port_int &port);
+    void name(const string &name);
+    void name_append(const string &appendix);
 
     const class phy &phy() const;
     const port_int &port() const;
