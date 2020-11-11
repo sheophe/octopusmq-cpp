@@ -3,6 +3,7 @@
 #include <chrono>
 #include <cstdarg>
 #include <iomanip>
+#include <sstream>
 #include <iostream>
 
 #include "core/topic.hpp"
@@ -74,7 +75,7 @@ void log::print(const log_type &type, const string &message) {
 }
 
 void log::print_action_left(const network_event_type &event_type, const string &action) {
-    std::cout << OCTOMQ_BOLD << std::right << std::setw(16) << std::setfill(' ') << action
+    std::cout << OCTOMQ_BOLD << std::right << std::setw(18) << std::setfill(' ') << action
               << OCTOMQ_RESET;
     std::cout << OCTOMQ_BOLD << (event_type == network_event_type::receive ? " <-- " : " --> ")
               << OCTOMQ_RESET;
@@ -127,5 +128,21 @@ void log::print_help() {
 const char *log::version_string() { return _version_string; }
 
 unsigned int log::build_number() { return _build_number; }
+
+string log::size_to_string(const size_t &size) {
+    std::ostringstream str_stream;
+    if (size < 0x400)
+        str_stream << size << " B";
+    else if (size < 0x100000)
+        str_stream << std::fixed << std::setprecision(1) << (static_cast<double>(size) / 0x400)
+                   << " KB";
+    else if (size < 0x40000000)
+        str_stream << std::fixed << std::setprecision(1) << (static_cast<double>(size) / 0x100000)
+                   << " MB";
+    else
+        str_stream << std::fixed << std::setprecision(1) << (static_cast<double>(size) / 0x40000000)
+                   << " GB";
+    return str_stream.str();
+}
 
 }  // namespace octopus_mq

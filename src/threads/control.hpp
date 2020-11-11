@@ -80,8 +80,8 @@ class control {
                                                                   { "--help", arg_help } };
 
    public:
-    static void stop_signals(const std::vector<int> signals);
-    static void signal_handler(int signal);
+    static void init_signal_handlers();
+    static void signal_handler(int sig);
 
     static void run(const int argc, const char **argv);
 };

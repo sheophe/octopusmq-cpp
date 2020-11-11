@@ -99,12 +99,16 @@ void control::shutdown_adapters() {
     _adapter_pool.clear();
 }
 
-void control::stop_signals(const std::vector<int> signals) {
-    for (int sig_n : signals) signal(sig_n, signal_handler);
+static std::map<const int, const char *> supported_signals = {
+    { SIGHUP, "hangup" }, { SIGINT, "interrupt" }, { SIGQUIT, "quit" }, { SIGABRT, "abort" }
+};
+
+void control::init_signal_handlers() {
+    for (auto &sig : supported_signals) signal(sig.first, signal_handler);
 }
 
-void control::signal_handler(int signal) {
-    log::print(log_type::info, "received signal \"%s\", stopping...", strsignal(signal));
+void control::signal_handler(int sig) {
+    log::print(log_type::info, "received %s signal, stopping...", supported_signals[sig]);
     _should_stop = true;
 }
 

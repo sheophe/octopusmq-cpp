@@ -9,7 +9,7 @@ using namespace octopus_mq;
 
 int main(const int argc, const char **argv) {
     // Configure signal handlers.
-    control::stop_signals({ SIGINT, SIGABRT, SIGHUP });
+    control::init_signal_handlers();
     // Making current thread the control thread. It reads the settings and
     // spawns other threads as needed. Wrapping the worker function into
     // try...catch to handle fatal exceptions.

@@ -23,6 +23,7 @@ class message {
         _payload;  // Only the actual message without flags and properties of any protocol
     string _topic;
     string _origin_client_id;
+    mqtt::version _mqtt_version;
     uint8_t _origin_pubopts;
 
     int _packet_type;

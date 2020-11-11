@@ -74,6 +74,9 @@ class log {
     static void print_help();
     static const char *version_string();
     static unsigned int build_number();
+
+    // Utility functions
+    static string size_to_string(const size_t &size);
 };
 
 }  // namespace octopus_mq
