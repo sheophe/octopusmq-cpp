@@ -35,13 +35,14 @@ using std::string, std::shared_ptr;
 class adapter_settings;
 using adapter_settings_parser_item = nlohmann::detail::iter_impl<const nlohmann::json>;
 using adapter_settings_parser =
-    std::unordered_map<string, void (*)(adapter_settings *, const adapter_settings_parser_item &)>;
+    std::map<string, void (*)(adapter_settings *, const adapter_settings_parser_item &)>;
 
 class adapter_settings {
     phy _phy;
     port_int _port;
     protocol_type _protocol;
     string _name;
+    bool _generated_name;
     nlohmann::json _json;
 
     static inline const std::map<protocol_type, string> _protocol_name = {
@@ -57,7 +58,7 @@ class adapter_settings {
     void phy(const string &phy);
     void port(const port_int &port);
     void name(const string &name);
-    void name_append(const string &appendix);
+    void name_append(const string &appendix);  // Only works with generated names
 
     const class phy &phy() const;
     const port_int &port() const;

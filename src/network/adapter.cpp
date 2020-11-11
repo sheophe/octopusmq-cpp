@@ -9,14 +9,14 @@ using std::string;
 static const string unknwon_protocol = "(unknown)";
 
 adapter_settings::adapter_settings(const protocol_type &protocol)
-    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol) {}
+    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _generated_name(false) {}
 
 adapter_settings::adapter_settings(const protocol_type &protocol, const string &phy,
                                    const port_int &port)
-    : _phy(octopus_mq::phy(phy)), _port(port), _protocol(protocol) {}
+    : _phy(octopus_mq::phy(phy)), _port(port), _protocol(protocol), _generated_name(false) {}
 
 adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann::json &json)
-    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _json(json) {
+    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _generated_name(false), _json(json) {
     // Parsing interface
     if (not json.contains(OCTOMQ_ADAPTER_FIELD_INTERFACE))
         throw missing_field_error(OCTOMQ_ADAPTER_FIELD_INTERFACE);
@@ -45,8 +45,10 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
             _name = name_field.get<string>();
         else
             throw field_type_error(OCTOMQ_ADAPTER_FIELD_NAME);
-    } else
+    } else {
         _name = '[' + _phy.name() + ':' + std::to_string(_port) + "] " + protocol_name(_protocol);
+        _generated_name = true;
+    }
 }
 
 void adapter_settings::phy(const class phy &phy) { _phy = phy; }
@@ -57,7 +59,9 @@ void adapter_settings::port(const port_int &port) { _port = port; }
 
 void adapter_settings::name(const string &name) { _name = name; }
 
-void adapter_settings::name_append(const string &appendix) { _name += ' ' + appendix; }
+void adapter_settings::name_append(const string &appendix) {
+    if (_generated_name) _name += ' ' + appendix;
+}
 
 const class phy &adapter_settings::phy() const { return _phy; }
 

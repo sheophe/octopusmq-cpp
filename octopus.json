@@ -16,20 +16,5 @@
             "role": "broker",
             "scope": "#"
         }
-    ],
-    "forwarders": [
-        {
-            "source": "remote/#",
-            "destination": "local/#",
-            "direction": "single"
-        }
-    ],
-    "system": {
-        "timeouts": {
-            "receive": 10000,
-            "ack": 10000,
-            "advertise": 5000,
-            "ping": 6000
-        }
-    }
+    ]
 }
