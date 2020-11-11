@@ -7,15 +7,15 @@ namespace octopus_mq::mqtt {
 
 template <typename Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
-    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
     this->_connections.erase(con);
+    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
     auto& idx = this->_subs.template get<connection_tag>();
     auto r = idx.equal_range(con);
     idx.erase(r.first, r.second);
 }
 
 template <typename Server>
-void broker<Server>::worker() {
+inline void broker<Server>::worker() {
     _server->listen();
     _ioc.run();
 }
@@ -48,7 +48,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
         auto& ep = *spep;
         std::weak_ptr<connection> wp(spep);
 
-        log::print(log_type::info, "mqtt: new connection accepted.");
+        log::print(log_type::info,
+                   "adapter '" + _adapter_settings->name() + "': new connection accepted.");
         // Pass spep to keep lifetime.
         // It makes sure wp.lock() never return nullptr in the handlers below
         // including close_handler and error_handler.
@@ -58,17 +59,26 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         // Set connection level handlers (lower than MQTT)
         ep.set_close_handler([this, wp]() {
-            log::print(log_type::info, "broker: connection closed.");
+            log::print(log_type::info,
+                       "adapter '" + _adapter_settings->name() + "': connection closed.");
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
             this->close_connection(sp);
         });
 
         ep.set_error_handler([this, wp](mqtt_cpp::error_code ec) {
-            log::print(log_type::error, ec.message());
+            log::print(log_type::error,
+                       "adapter '" + _adapter_settings->name() + "': " + ec.message());
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
             this->close_connection(sp);
+        });
+
+        ep.set_pingreq_handler([wp]() {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            sp->pingresp();
+            return true;
         });
 
         // Set handlers for MQTTv3 protocol

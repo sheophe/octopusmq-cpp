@@ -85,7 +85,7 @@ class broker final : public adapter_interface {
     std::mutex _subs_mutex;
 
     inline void close_connection(connection_sp const& con);
-    void worker();
+    inline void worker();
 
    public:
     broker(const octopus_mq::adapter_settings_ptr adapter_settings, message_pool& global_queue);
