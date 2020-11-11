@@ -68,12 +68,10 @@ class log {
     static void print_event(const phy &phy, const address &remote_address, const string &client_id,
                             const string &protocol_name, const port_int &local_port,
                             const string &adapter_role, const network_event_type &event_type,
-                            const string &action, const string &additional = string());
+                            const string &action);
+    static void print_action(const network_event_type &event_type, const string &action);
     static void print_action(const network_event_type &event_type, const string &action,
-                             const string &additional);
-    static void print_action(const network_event_type &event_type, const string &action,
-                             const class address &remote, const string &client_id,
-                             const string &additional);
+                             const class address &remote, const string &client_id);
     static void print_help();
     static const char *version_string();
     static unsigned int build_number();

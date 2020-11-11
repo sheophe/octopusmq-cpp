@@ -86,35 +86,27 @@ void log::print_action_left(const network_event_type &event_type, const string &
               << OCTOMQ_RESET;
 }
 
-void log::print_action(const network_event_type &event_type, const string &action,
-                       const string &additional) {
+void log::print_action(const network_event_type &event_type, const string &action) {
     print_time(log_type::info);
     print_action_left(event_type, action);
-    if (additional.empty())
-        std::cout << std::endl;
-    else
-        std::cout << OCTOMQ_RESET << " [ " << additional << " ]" << std::endl;
+    std::cout << std::endl;
 }
 
 void log::print_action(const network_event_type &event_type, const string &action,
-                       const class address &remote, const string &client_id,
-                       const string &additional) {
+                       const class address &remote, const string &client_id) {
     print_time(log_type::info);
     print_action_left(event_type, action);
     std::cout << OCTOMQ_RESET << remote.to_string();
-    if (not client_id.empty())
-        std::cout << OCTOMQ_WHITE << " (" << client_id << ')' << OCTOMQ_RESET;
-
-    if (additional.empty())
+    if (client_id.empty())
         std::cout << std::endl;
     else
-        std::cout << OCTOMQ_RESET << " [ " << additional << " ]" << std::endl;
+        std::cout << OCTOMQ_WHITE << " (" << client_id << ')' << OCTOMQ_RESET;
 }
 
 void log::print_event(const phy &phy, const address &remote_address, const string &client_id,
                       const string &protocol_name, const port_int &local_port,
                       const string &adapter_role, const network_event_type &event_type,
-                      const string &action, const string &additional) {
+                      const string &action) {
     std::lock_guard<std::mutex> log_lock(_mutex);
     print_time(log_type::more);
     string adapter_name = string('[' + phy.name() + ':' + std::to_string(local_port) + "] " +
@@ -124,7 +116,7 @@ void log::print_event(const phy &phy, const address &remote_address, const strin
                   << OCTOMQ_RESET << '\n';
         _last_adapter_name = adapter_name;
     }
-    print_action(event_type, action, remote_address, client_id, additional);
+    print_action(event_type, action, remote_address, client_id);
 }
 
 void log::print_help() {
