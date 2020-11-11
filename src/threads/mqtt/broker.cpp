@@ -51,12 +51,11 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
         std::weak_ptr<connection> wp(spep);
 
         auto llre = ep.socket().lowest_layer().remote_endpoint();
-        auto re_address = llre.address();
-        unsigned short re_port = llre.port();
+        address remote_address(llre.address().to_string(), llre.port());
 
         log::print(log_type::info, "adapter '" + _adapter_settings->name() +
-                                       "': new connection accepted from " + re_address.to_string() +
-                                       ':' + std::to_string(re_port));
+                                       "': new connection accepted from " +
+                                       remote_address.to_string());
         // Pass spep to keep lifetime.
         // It makes sure wp.lock() never return nullptr in the handlers below
         // including close_handler and error_handler.
