@@ -2,8 +2,11 @@
 #include "core/log.hpp"
 
 #include <iomanip>
+#include <boost/asio/ip/address.hpp>
 
 namespace octopus_mq::mqtt {
+
+using namespace boost::asio;
 
 template <typename Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
@@ -27,29 +30,33 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
     // When octopus_mq::phy gets the name defined in OCTOMQ_IFACE_NAME_ANY
     // instead of correct interface name (which means any interface should be listened),
     // it stores address defined in OCTOMQ_NULL_IP as an interface IP address.
-    if (_adapter_settings->phy().ip() == OCTOMQ_NULL_IP) {
-        _server =
-            std::make_unique<Server>(boost::asio::ip::tcp::endpoint(
-                                         boost::asio::ip::tcp::v4(),
-                                         boost::lexical_cast<uint16_t>(_adapter_settings->port())),
-                                     _ioc);
-    } else {
-        boost::asio::ip::tcp::resolver resolver(_ioc);
-        _server =
-            std::make_unique<Server>(*resolver.resolve((_adapter_settings->phy().ip_string(),
-                                                        std::to_string(_adapter_settings->port()))),
-                                     _ioc);
-    }
+    if (_adapter_settings->phy().ip() == OCTOMQ_NULL_IP)
+        _server = std::make_unique<Server>(
+            ip::tcp::endpoint(ip::tcp::v4(),
+                              boost::lexical_cast<uint16_t>(_adapter_settings->port())),
+            _ioc);
+    else
+        _server = std::make_unique<Server>(
+            ip::tcp::endpoint(ip::make_address(_adapter_settings->phy().ip_string()),
+                              boost::lexical_cast<uint16_t>(_adapter_settings->port())),
+            _ioc);
 
-    _server->set_error_handler(
-        [](mqtt_cpp::error_code ec) { log::print(log_type::error, ec.message()); });
+    _server->set_error_handler([](mqtt_cpp::error_code ec) {
+        if (ec != boost::system::errc::operation_canceled)
+            log::print(log_type::error, ec.message());
+    });
 
     _server->set_accept_handler([this](connection_sp spep) {
         auto& ep = *spep;
         std::weak_ptr<connection> wp(spep);
 
-        log::print(log_type::info,
-                   "adapter '" + _adapter_settings->name() + "': new connection accepted.");
+        auto llre = ep.socket().lowest_layer().remote_endpoint();
+        auto re_address = llre.address();
+        unsigned short re_port = llre.port();
+
+        log::print(log_type::info, "adapter '" + _adapter_settings->name() +
+                                       "': new connection accepted from " + re_address.to_string() +
+                                       ':' + std::to_string(re_port));
         // Pass spep to keep lifetime.
         // It makes sure wp.lock() never return nullptr in the handlers below
         // including close_handler and error_handler.
