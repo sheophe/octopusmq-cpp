@@ -21,6 +21,8 @@ long long log::_start_timestamp = 0;
 
 bool log::_relative_timestamp = false;
 
+string log::_last_adapter_name = string();
+
 void log::print_time(const log_type &type) {
     if (type != log_type::more) {
         auto timestamp =
@@ -71,50 +73,41 @@ void log::print(const log_type &type, const string &message) {
     }
 }
 
-void log::print_action_left(const network_event_type &event_type, const string &action,
-                            const uint32_t &length, const uint32_t &hash) {
-    std::cout << std::right << std::hex << std::setw(8) << std::setfill('0') << hash;
-    std::cout << std::right << std::setfill(' ') << std::setw(10)
-              << string(std::to_string(length) + "B") << OCTOMQ_BOLD << std::right << std::setw(15)
-              << action << OCTOMQ_RESET;
+void log::print_action_left(const network_event_type &event_type, const string &action) {
+    std::cout << OCTOMQ_BOLD << std::right << std::setw(15) << std::setfill(' ') << action
+              << OCTOMQ_RESET;
     std::cout << OCTOMQ_BOLD << (event_type == network_event_type::receive ? " <-- " : " --> ")
               << OCTOMQ_RESET;
 }
 
-void log::print_action(const network_event_type &event_type, const string &action,
-                       const uint32_t &length, const uint32_t &hash, const class topic &topic) {
+void log::print_action(const network_event_type &event_type, const string &action) {
     print_time(log_type::info);
-    print_action_left(event_type, action, length, hash);
-    if (!topic.name().empty())
-        std::cout << topic.name();
-    else if (topic.id() != OCTOMQ_NULL_TOPICID)
-        std::cout << "topic.id=" << std::dec << topic.id();
-    else
-        std::cout << OCTOMQ_RED << "(unknown topic)" << OCTOMQ_RESET;
+    print_action_left(event_type, action);
     std::cout << std::endl;
 }
 
 void log::print_action(const network_event_type &event_type, const string &action,
-                       const uint32_t &length, const uint32_t &hash, const class address &remote) {
+                       const class address &remote, const string &client_id) {
     print_time(log_type::info);
-    print_action_left(event_type, action, length, hash);
-    std::cout << OCTOMQ_WHITE << remote.to_string() << OCTOMQ_RESET << std::endl;
+    print_action_left(event_type, action);
+    std::cout << OCTOMQ_WHITE << remote.to_string() << " (" << client_id << ')' << OCTOMQ_RESET
+              << std::endl;
 }
 
-void log::print_event(const phy &phy, const address &remote_address, const string &protocol_name,
-                      const port_int &local_port, const string &adapter_role,
-                      const network_event_type &event_type, const string &action,
-                      const uint32_t &length, const uint32_t &hash, const class topic &topic) {
+void log::print_event(const phy &phy, const address &remote_address, const string &client_id,
+                      const string &protocol_name, const port_int &local_port,
+                      const string &adapter_role, const network_event_type &event_type,
+                      const string &action) {
     std::lock_guard<std::mutex> log_lock(_mutex);
     print_time(log_type::more);
-    std::cout << OCTOMQ_BOLD << std::left << std::setw(35) << std::setfill(' ')
-              << string('[' + phy.name() + ':' + std::to_string(local_port) + "] " + protocol_name +
-                        ' ' + adapter_role + ':')
-              << OCTOMQ_RESET << '\n';
-    if (topic.empty())
-        print_action(event_type, action, length, hash, remote_address);
-    else
-        print_action(event_type, action, length, hash, topic);
+    string adapter_name = string('[' + phy.name() + ':' + std::to_string(local_port) + "] " +
+                                 protocol_name + ' ' + adapter_role + ':');
+    if (_last_adapter_name != adapter_name) {
+        std::cout << OCTOMQ_BOLD << std::left << std::setw(35) << std::setfill(' ') << adapter_name
+                  << OCTOMQ_RESET << '\n';
+        _last_adapter_name = adapter_name;
+    }
+    print_action(event_type, action, remote_address, client_id);
 }
 
 void log::print_help() {

@@ -26,6 +26,13 @@ namespace multi_index = boost::multi_index;
 struct topic_tag {};
 struct connection_tag {};
 
+struct metadata {
+    address address;
+    std::string client_id;
+    uint64_t n_publishes;
+    mqtt::version protocol_version;
+};
+
 // Class Server must be one of the following:
 // mqtt_cpp::server<>
 // mqtt_cpp::server_ws<>
@@ -81,6 +88,7 @@ class broker final : public adapter_interface {
     std::unique_ptr<Server> _server;
     std::thread _thread;
     std::set<connection_sp> _connections;
+    std::map<connection_sp, struct metadata> _meta;
     subscription_container _subs;
     std::mutex _subs_mutex;
 

@@ -45,6 +45,7 @@ class log {
     static const unsigned int _build_number = OCTOMQ_BUILD_NUMBER;
     static long long _start_timestamp;
     static bool _relative_timestamp;
+    static string _last_adapter_name;
 
     static inline const std::map<log_type, string> _log_prefix = {
         { log_type::info, "" },
@@ -56,25 +57,20 @@ class log {
     };
 
     static void print_time(const log_type &type);
-    static void print_action_left(const network_event_type &event_type, const string &action,
-                                  const uint32_t &length, const uint32_t &hash);
+    static void print_action_left(const network_event_type &event_type, const string &action);
 
    public:
     static void print_started(const bool daemon = false);
     static void print_stopped(const bool error = false);
     static void print(const log_type &type, const char *format, ...);
     static void print(const log_type &type, const string &message);
-    static void print_event(const phy &phy, const address &remote_address,
+    static void print_event(const phy &phy, const address &remote_address, const string &client_id,
                             const string &protocol_name, const port_int &local_port,
                             const string &adapter_role, const network_event_type &event_type,
-                            const string &action, const uint32_t &length, const uint32_t &hash,
-                            const class topic &topic);
+                            const string &action);
+    static void print_action(const network_event_type &event_type, const string &action);
     static void print_action(const network_event_type &event_type, const string &action,
-                             const uint32_t &length, const uint32_t &hash,
-                             const class topic &topic);
-    static void print_action(const network_event_type &event_type, const string &action,
-                             const uint32_t &length, const uint32_t &hash,
-                             const class address &remote);
+                             const class address &remote, const string &client_id);
     static void print_help();
     static const char *version_string();
     static unsigned int build_number();

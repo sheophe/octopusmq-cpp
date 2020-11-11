@@ -34,7 +34,7 @@ static octopus_mq::adapter_settings_parser adapter_settings_parser = {
 adapter_settings::adapter_settings()
     : octopus_mq::adapter_settings(protocol_type::mqtt),
       _transport(transport_type::tcp),
-      _role(mqtt_adapter_role::broker),
+      _role(adapter_role::broker),
       _scope({ "#" }) {}
 
 adapter_settings::adapter_settings(const nlohmann::json &json)
@@ -56,7 +56,7 @@ void adapter_settings::transport(const string &transport) {
         throw std::runtime_error("unsupported transport for mqtt adapter: " + transport);
 }
 
-void adapter_settings::role(const mqtt_adapter_role &role) { _role = role; }
+void adapter_settings::role(const adapter_role &role) { _role = role; }
 
 void adapter_settings::role(const string &role) {
     if (auto iter = _role_from_name.find(role); iter != _role_from_name.end())
@@ -77,7 +77,7 @@ void adapter_settings::scope(const std::list<string> &scope) {
 
 const transport_type &adapter_settings::transport() const { return _transport; }
 
-const mqtt_adapter_role &adapter_settings::role() const { return _role; }
+const adapter_role &adapter_settings::role() const { return _role; }
 
 const std::list<string> &adapter_settings::scope() const { return _scope; }
 

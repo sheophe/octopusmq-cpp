@@ -4,6 +4,9 @@
 #include <iomanip>
 #include <boost/asio/ip/address.hpp>
 
+#define OCTOMQ_MQTT_BROKER_ROLE "broker"
+#define OCTOMQ_MQTT_PROTOCOL_NAME "mqtt"
+
 namespace octopus_mq::mqtt {
 
 using namespace boost::asio;
@@ -11,6 +14,7 @@ using namespace boost::asio;
 template <typename Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
     this->_connections.erase(con);
+    this->_meta.erase(con);
     std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
     auto& idx = this->_subs.template get<connection_tag>();
     auto r = idx.equal_range(con);
@@ -52,10 +56,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         auto llre = ep.socket().lowest_layer().remote_endpoint();
         address remote_address(llre.address().to_string(), llre.port());
+        _meta[spep].address = remote_address;
 
-        log::print(log_type::info, "adapter '" + _adapter_settings->name() +
-                                       "': new connection accepted from " +
-                                       remote_address.to_string());
         // Pass spep to keep lifetime.
         // It makes sure wp.lock() never return nullptr in the handlers below
         // including close_handler and error_handler.
@@ -73,83 +75,119 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
         });
 
         ep.set_error_handler([this, wp](mqtt_cpp::error_code ec) {
-            log::print(log_type::error,
-                       "adapter '" + _adapter_settings->name() + "': " + ec.message());
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
+            std::string message;
+            if (ec == boost::system::errc::bad_file_descriptor)
+                message = "socket error on " + _meta[sp].client_id;
+            else
+                message = ec.message() + " on " + _meta[sp].client_id;
+            log::print(log_type::error, "adapter '" + _adapter_settings->name() + "': " + message);
             this->close_connection(sp);
         });
 
-        ep.set_pingreq_handler([wp]() {
+        ep.set_pingreq_handler([this, wp]() {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "pingreq");
             sp->pingresp();
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send, "pingresp");
             return true;
         });
 
         // Set handlers for MQTTv3 protocol
         ep.set_connect_handler([this, wp](mqtt_cpp::buffer client_id,
-                                          mqtt_cpp::optional<mqtt_cpp::buffer> username,
-                                          mqtt_cpp::optional<mqtt_cpp::buffer> password,
-                                          mqtt_cpp::optional<mqtt_cpp::will>, bool clean_session,
-                                          std::uint16_t keep_alive) {
-            using namespace mqtt_cpp::literals;
-            std::cout << "[server] client_id    : " << client_id << std::endl;
-            std::cout << "[server] username     : " << (username ? username.value() : "none"_mb)
-                      << std::endl;
-            std::cout << "[server] password     : " << (password ? password.value() : "none"_mb)
-                      << std::endl;
-            std::cout << "[server] clean_session: " << std::boolalpha << clean_session << std::endl;
-            std::cout << "[server] keep_alive   : " << keep_alive << std::endl;
+                                          mqtt_cpp::optional<mqtt_cpp::buffer> /*username*/,
+                                          mqtt_cpp::optional<mqtt_cpp::buffer> /*password*/,
+                                          mqtt_cpp::optional<mqtt_cpp::will>,
+                                          bool /*clean_session*/, std::uint16_t /*keep_alive*/) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
             this->_connections.insert(sp);
+            this->_meta[sp].client_id = client_id;
+            this->_meta[sp].protocol_version = version::v3;
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "connect");
             sp->connack(false, mqtt_cpp::connect_return_code::accepted);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send, "connack");
             return true;
         });
 
         ep.set_disconnect_handler([this, wp]() {
-            std::cout << "[server] disconnect received." << std::endl;
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "disconnect");
             this->close_connection(sp);
         });
 
-        ep.set_puback_handler([](packet_id_t packet_id) {
-            std::cout << "[server] puback received. packet_id: " << packet_id << std::endl;
+        ep.set_puback_handler([this, wp](packet_id_t /*packet_id*/) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "puback");
             return true;
         });
 
-        ep.set_pubrec_handler([](packet_id_t packet_id) {
-            std::cout << "[server] pubrec received. packet_id: " << packet_id << std::endl;
+        ep.set_pubrec_handler([this, wp](packet_id_t /*packet_id*/) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "pubrec");
             return true;
         });
 
-        ep.set_pubrel_handler([](packet_id_t packet_id) {
-            std::cout << "[server] pubrel received. packet_id: " << packet_id << std::endl;
+        ep.set_pubrel_handler([this, wp](packet_id_t /*packet_id*/) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "pubrel");
             return true;
         });
 
-        ep.set_pubcomp_handler([](packet_id_t packet_id) {
-            std::cout << "[server] pubcomp received. packet_id: " << packet_id << std::endl;
+        ep.set_pubcomp_handler([this, wp](packet_id_t /*packet_id*/) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "pubcomp");
             return true;
         });
 
-        ep.set_publish_handler([this](mqtt_cpp::optional<packet_id_t> packet_id,
-                                      mqtt_cpp::publish_options pubopts,
-                                      mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents) {
-            std::cout << "[server] publish received."
-                      << " dup: " << pubopts.get_dup() << " qos: " << pubopts.get_qos()
-                      << " retain: " << pubopts.get_retain() << std::endl;
-            if (packet_id) std::cout << "[server] packet_id: " << *packet_id << std::endl;
-            std::cout << "[server] topic_name: " << topic_name << std::endl;
-            std::cout << "[server] contents: " << contents << std::endl;
+        ep.set_publish_handler([this, wp](mqtt_cpp::optional<packet_id_t> /*packet_id*/,
+                                          mqtt_cpp::publish_options pubopts,
+                                          mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "publish");
+            std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             auto const& idx = this->_subs.template get<topic_tag>();
             auto r = idx.equal_range(topic_name);
             for (; r.first != r.second; ++r.first) {
                 r.first->con->publish(topic_name, contents,
                                       std::min(r.first->qos_value, pubopts.get_qos()));
+                auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
+                address remote_address(llre.address().to_string(), llre.port());
+                log::print_event(_adapter_settings->phy(), remote_address,
+                                 _meta[r.first->con].client_id, OCTOMQ_MQTT_PROTOCOL_NAME,
+                                 _adapter_settings->port(), OCTOMQ_MQTT_BROKER_ROLE,
+                                 network_event_type::send, "publish");
             }
+            _subs_lock.unlock();
+            ++(this->_meta[sp].n_publishes);
             return true;
         });
 
@@ -157,110 +195,133 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             [this, wp](
                 packet_id_t packet_id,
                 std::vector<std::tuple<mqtt_cpp::buffer, mqtt_cpp::subscribe_options>> entries) {
-                std::cout << "[server] subscribe received. packet_id: " << packet_id << std::endl;
-                std::vector<mqtt_cpp::suback_return_code> res;
-                res.reserve(entries.size());
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
+                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "subscribe");
+                std::vector<mqtt_cpp::suback_return_code> res;
+                res.reserve(entries.size());
                 for (auto const& e : entries) {
                     mqtt_cpp::buffer topic = std::get<0>(e);
                     mqtt_cpp::qos qos_value = std::get<1>(e).get_qos();
-                    std::cout << "[server] topic: " << topic << " qos: " << qos_value << std::endl;
                     res.emplace_back(mqtt_cpp::qos_to_suback_return_code(qos_value));
                     std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
                     this->_subs.emplace(std::move(topic), sp, qos_value);
                 }
                 sp->suback(packet_id, res);
+                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send, "suback");
                 return true;
             });
 
-        ep.set_unsubscribe_handler(
-            [this, wp](packet_id_t packet_id, std::vector<mqtt_cpp::buffer> topics) {
-                std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
-                std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
-                for (auto const& topic : topics) {
-                    this->_subs.erase(topic);
-                }
-                _subs_lock.unlock();
-                auto sp = wp.lock();
-                BOOST_ASSERT(sp);
-                sp->unsuback(packet_id);
-                return true;
-            });
-
-        // Set handlers for MQTTv5 protocol
-        ep.set_v5_connect_handler([this, wp](mqtt_cpp::buffer client_id,
-                                             mqtt_cpp::optional<mqtt_cpp::buffer> const& username,
-                                             mqtt_cpp::optional<mqtt_cpp::buffer> const& password,
-                                             mqtt_cpp::optional<mqtt_cpp::will>, bool clean_start,
-                                             std::uint16_t keep_alive, mqtt_cpp::v5::properties) {
-            using namespace mqtt_cpp::literals;
-            std::cout << "[server] client_id    : " << client_id << std::endl;
-            std::cout << "[server] username     : " << (username ? username.value() : "none"_mb)
-                      << std::endl;
-            std::cout << "[server] password     : " << (password ? password.value() : "none"_mb)
-                      << std::endl;
-            std::cout << "[server] clean_start  : " << std::boolalpha << clean_start << std::endl;
-            std::cout << "[server] keep_alive   : " << keep_alive << std::endl;
+        ep.set_unsubscribe_handler([this, wp](packet_id_t packet_id,
+                                              std::vector<mqtt_cpp::buffer> topics) {
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
-            this->_connections.insert(sp);
-            sp->connack(false, mqtt_cpp::v5::connect_reason_code::success);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "unsubscribe");
+            std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
+            for (auto const& topic : topics) {
+                this->_subs.erase(topic);
+            }
+            _subs_lock.unlock();
+            sp->unsuback(packet_id);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send, "unsuback");
             return true;
         });
 
-        ep.set_v5_disconnect_handler(
-            [this, wp](mqtt_cpp::v5::disconnect_reason_code reason_code, mqtt_cpp::v5::properties) {
-                std::cout << "[server] disconnect received."
-                          << " reason_code: " << reason_code << std::endl;
+        // Set handlers for MQTTv5 protocol
+        ep.set_v5_connect_handler(
+            [this, wp](mqtt_cpp::buffer client_id,
+                       mqtt_cpp::optional<mqtt_cpp::buffer> const& /*username*/,
+                       mqtt_cpp::optional<mqtt_cpp::buffer> const& /*password*/,
+                       mqtt_cpp::optional<mqtt_cpp::will>, bool /*clean_start*/,
+                       std::uint16_t /*keep_alive*/, mqtt_cpp::v5::properties) {
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
+                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "connect");
+                this->_connections.insert(sp);
+                this->_meta[sp].client_id = client_id;
+                this->_meta[sp].protocol_version = version::v5;
+                sp->connack(false, mqtt_cpp::v5::connect_reason_code::success);
+                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send, "connack");
+                return true;
+            });
+
+        ep.set_v5_disconnect_handler(
+            [this, wp](mqtt_cpp::v5::disconnect_reason_code /*reason_code*/,
+                       mqtt_cpp::v5::properties) {
+                auto sp = wp.lock();
+                BOOST_ASSERT(sp);
+                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "connect");
                 this->close_connection(sp);
             });
 
-        ep.set_v5_puback_handler([](packet_id_t packet_id,
-                                    mqtt_cpp::v5::puback_reason_code reason_code,
-                                    mqtt_cpp::v5::properties) {
-            std::cout << "[server] puback received. packet_id: " << packet_id
-                      << " reason_code: " << reason_code << std::endl;
+        ep.set_v5_puback_handler([this, wp](packet_id_t /*packet_id*/,
+                                            mqtt_cpp::v5::puback_reason_code /*reason_code*/,
+                                            mqtt_cpp::v5::properties) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "puback");
             return true;
         });
 
-        ep.set_v5_pubrec_handler([](packet_id_t packet_id,
-                                    mqtt_cpp::v5::pubrec_reason_code reason_code,
-                                    mqtt_cpp::v5::properties) {
-            std::cout << "[server] pubrec received. packet_id: " << packet_id
-                      << " reason_code: " << reason_code << std::endl;
+        ep.set_v5_pubrec_handler([this, wp](packet_id_t /*packet_id*/,
+                                            mqtt_cpp::v5::pubrec_reason_code /*reason_code*/,
+                                            mqtt_cpp::v5::properties) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "pubrec");
             return true;
         });
 
-        ep.set_v5_pubrel_handler([](packet_id_t packet_id,
-                                    mqtt_cpp::v5::pubrel_reason_code reason_code,
-                                    mqtt_cpp::v5::properties) {
-            std::cout << "[server] pubrel received. packet_id: " << packet_id
-                      << " reason_code: " << reason_code << std::endl;
+        ep.set_v5_pubrel_handler([this, wp](packet_id_t /*packet_id*/,
+                                            mqtt_cpp::v5::pubrel_reason_code /*reason_code*/,
+                                            mqtt_cpp::v5::properties) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "pubrel");
             return true;
         });
 
-        ep.set_v5_pubcomp_handler([](packet_id_t packet_id,
-                                     mqtt_cpp::v5::pubcomp_reason_code reason_code,
-                                     mqtt_cpp::v5::properties) {
-            std::cout << "[server] pubcomp received. packet_id: " << packet_id
-                      << " reason_code: " << reason_code << std::endl;
+        ep.set_v5_pubcomp_handler([this, wp](packet_id_t /*packet_id*/,
+                                             mqtt_cpp::v5::pubcomp_reason_code /*reason_code*/,
+                                             mqtt_cpp::v5::properties) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "pubcomp");
             return true;
         });
 
-        ep.set_v5_publish_handler([this](mqtt_cpp::optional<packet_id_t> packet_id,
-                                         mqtt_cpp::publish_options pubopts,
-                                         mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents,
-                                         mqtt_cpp::v5::properties props) {
-            std::cout << "[server] publish received."
-                      << " dup: " << pubopts.get_dup() << " qos: " << pubopts.get_qos()
-                      << " retain: " << pubopts.get_retain() << std::endl;
-            if (packet_id) std::cout << "[server] packet_id: " << *packet_id << std::endl;
-            std::cout << "[server] topic_name: " << topic_name << std::endl;
-            std::cout << "[server] contents: " << contents << std::endl;
-            std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
+        ep.set_v5_publish_handler([this, wp](mqtt_cpp::optional<packet_id_t> /*packet_id*/,
+                                             mqtt_cpp::publish_options pubopts,
+                                             mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents,
+                                             mqtt_cpp::v5::properties props) {
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "publish");
+            std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             auto const& idx = this->_subs.template get<topic_tag>();
             auto r = idx.equal_range(topic_name);
             for (; r.first != r.second; ++r.first) {
@@ -270,7 +331,15 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 r.first->con->publish(topic_name, contents,
                                       std::min(r.first->qos_value, pubopts.get_qos()) | retain,
                                       std::move(props));
+                auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
+                address remote_address(llre.address().to_string(), llre.port());
+                log::print_event(_adapter_settings->phy(), remote_address,
+                                 _meta[r.first->con].client_id, OCTOMQ_MQTT_PROTOCOL_NAME,
+                                 _adapter_settings->port(), OCTOMQ_MQTT_BROKER_ROLE,
+                                 network_event_type::send, "publish");
             }
+            _subs_lock.unlock();
+            ++(this->_meta[sp].n_publishes);
             return true;
         });
 
@@ -279,41 +348,49 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 packet_id_t packet_id,
                 std::vector<std::tuple<mqtt_cpp::buffer, mqtt_cpp::subscribe_options>> entries,
                 mqtt_cpp::v5::properties) {
-                std::cout << "[server] subscribe received. packet_id: " << packet_id << std::endl;
-                std::vector<mqtt_cpp::v5::suback_reason_code> res;
-                res.reserve(entries.size());
                 auto sp = wp.lock();
                 BOOST_ASSERT(sp);
+                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "subscribe");
+                std::vector<mqtt_cpp::v5::suback_reason_code> res;
+                res.reserve(entries.size());
                 for (auto const& e : entries) {
                     mqtt_cpp::buffer topic = std::get<0>(e);
                     mqtt_cpp::qos qos_value = std::get<1>(e).get_qos();
                     mqtt_cpp::rap rap_value = std::get<1>(e).get_rap();
-                    std::cout << "[server] topic: " << topic << " qos: " << qos_value
-                              << " rap: " << rap_value << std::endl;
                     res.emplace_back(mqtt_cpp::v5::qos_to_suback_reason_code(qos_value));
                     std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
                     this->_subs.emplace(std::move(topic), sp, qos_value, rap_value);
                 }
                 sp->suback(packet_id, res);
+                log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                                 OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                                 OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send, "suback");
                 return true;
             });
 
         ep.set_v5_unsubscribe_handler([this, wp](packet_id_t packet_id,
                                                  std::vector<mqtt_cpp::buffer> topics,
                                                  mqtt_cpp::v5::properties) {
-            std::cout << "[server] unsubscribe received. packet_id: " << packet_id << std::endl;
+            auto sp = wp.lock();
+            BOOST_ASSERT(sp);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::receive, "subscribe");
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             for (auto const& topic : topics) {
                 this->_subs.erase(topic);
             }
             _subs_lock.unlock();
-            auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             sp->unsuback(packet_id);
+            log::print_event(_adapter_settings->phy(), _meta[sp].address, _meta[sp].client_id,
+                             OCTOMQ_MQTT_PROTOCOL_NAME, _adapter_settings->port(),
+                             OCTOMQ_MQTT_BROKER_ROLE, network_event_type::send, "unsuback");
             return true;
         });
     });
-}
+}  // namespace octopus_mq::mqtt
 
 template <typename Server>
 void broker<Server>::run() {

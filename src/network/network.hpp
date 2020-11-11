@@ -18,14 +18,6 @@ using std::string;
 
 enum class protocol_type { mqtt, dds };
 
-namespace mqtt {
-
-    enum class mqtt_adapter_role { broker, client };
-
-    enum class mqtt_version { v3, v5 };
-
-}  // namespace mqtt
-
 enum class tx_type { unicast, multicast, broadcast };
 
 enum class transport_type { udp, tcp, tls, websocket, tls_websocket };
@@ -39,6 +31,14 @@ using ip_int = uint32_t;
 using socket_int = int32_t;
 
 using network_payload = std::vector<unsigned char>;
+
+namespace mqtt {
+
+    enum class adapter_role { broker, client };
+
+    enum class version { v3, v5 };
+
+}  // namespace mqtt
 
 class address {
     ip_int _ip;
