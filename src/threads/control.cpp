@@ -148,7 +148,6 @@ void control::run(const int argc, const char **argv) {
 
         // Following functions implements a loop of the main thread.
         // The loop is running as long as _should_stop == false.
-        // When signal is received
         message_pool_manager();
 
         shutdown_adapters();
