@@ -100,7 +100,7 @@ void log::print_action(const network_event_type &event_type, const string &actio
     if (client_id.empty())
         std::cout << std::endl;
     else
-        std::cout << OCTOMQ_WHITE << " (" << client_id << ')' << OCTOMQ_RESET;
+        std::cout << OCTOMQ_WHITE << " (" << client_id << ')' << OCTOMQ_RESET << std::endl;
 }
 
 void log::print_event(const phy &phy, const address &remote_address, const string &client_id,
