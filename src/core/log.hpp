@@ -11,7 +11,7 @@
 #include "network/network.hpp"
 
 #define OCTOMQ_MAX_LOG_LINE_LENGTH (256)
-#define OCTOMQ_VERSION_STRING "1.0.0"
+#define OCTOMQ_VERSION_STRING "1.2.0"
 #define OCTOMQ_BUILD_NUMBER (4)
 
 #define OCTOMQ_BLACK "\u001b[30m"

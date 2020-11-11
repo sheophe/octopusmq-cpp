@@ -8,6 +8,7 @@
 #define MQTT_STD_OPTIONAL
 #define MQTT_STD_VARIANT
 #define MQTT_STD_STRING_VIEW
+#define MQTT_STD_ANY
 #define MQTT_NS mqtt_cpp
 
 #endif

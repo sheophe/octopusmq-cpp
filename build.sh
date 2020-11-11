@@ -11,6 +11,7 @@ for var in "$@"
 do
     case "$var" in
         -c | --clean)
+            echo "-- Cleaning build directory"
             rm -rf build/
             mkdir build/
             ;;

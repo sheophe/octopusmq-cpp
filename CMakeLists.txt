@@ -80,4 +80,4 @@ if (UNIX AND NOT APPLE)
 endif()
 
 # OPENDDS_TARGET_SOURCES(${PROJECT_NAME} "${THREADS_DIR}/dds/message.idl" OPENDDS_IDL_OPTIONS "-Lc++11")
-target_link_libraries(${PROJECT_NAME} pthread Boost::system)
+target_link_libraries(${PROJECT_NAME} pthread)

@@ -77,8 +77,15 @@ void control::daemonize() {
 }
 
 void control::initialize_adapters() {
-    for (auto &adapter : _adapter_pool)
-        adapter.second = adapter_interface_factory::from_settings(adapter.first, _message_pool);
+    for (auto &adapter : _adapter_pool) {
+        try {
+            adapter.second = adapter_interface_factory::from_settings(adapter.first, _message_pool);
+        } catch (const std::runtime_error &re) {
+            log::print(log_type::fatal, "adapter '" + adapter.first->name() + "': " + re.what());
+            _should_stop = true;
+            break;
+        }
+    }
 }
 
 void control::shutdown_adapters() {
