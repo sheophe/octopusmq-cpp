@@ -73,6 +73,7 @@ class control {
     static void daemonize();
     static void initialize_adapters();
     static void shutdown_adapters();
+    static void print_adapters();
 
     static void message_pool_manager();  // Main thread routine
 

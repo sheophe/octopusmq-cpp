@@ -62,6 +62,7 @@ class log {
    public:
     static void print_started(const bool daemon = false);
     static void print_stopped(const bool error = false);
+    static void print_empty_line();
     static void print(const log_type &type, const char *format, ...);
     static void print(const log_type &type, const string &message);
     static void print_event(const phy &phy, const address &remote_address, const string &client_id,

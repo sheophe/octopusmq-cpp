@@ -99,6 +99,16 @@ void control::shutdown_adapters() {
     _adapter_pool.clear();
 }
 
+void control::print_adapters() {
+    size_t pool_size = _adapter_pool.size();
+    log::print(log_type::info, "running %lu %s:", pool_size,
+               (pool_size > 1) ? "adapters" : "adapter");
+    for (auto &adapter : _adapter_pool)
+        log::print(log_type::more, adapter.first->name() + " (" + adapter.first->phy().ip_string() +
+                                       ':' + std::to_string(adapter.first->port()) + ')');
+    log::print_empty_line();
+}
+
 static std::map<const int, const char *> supported_signals = {
     { SIGHUP, "hangup" }, { SIGINT, "interrupt" }, { SIGQUIT, "quit" }, { SIGABRT, "abort" }
 };
@@ -144,7 +154,7 @@ void control::run(const int argc, const char **argv) {
     initialize_adapters();
 
     if (_initialized) {
-        log::print(log_type::info, "initialized.");
+        print_adapters();
 
         // Following functions implements a loop of the main thread.
         // The loop is running as long as _should_stop == false.

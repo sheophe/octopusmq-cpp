@@ -54,6 +54,11 @@ void log::print_stopped(const bool error) {
         log::print(log_type::info, "stopped.");
 }
 
+void log::print_empty_line() {
+    std::lock_guard<std::mutex> log_lock(_mutex);
+    std::cout << std::endl;
+}
+
 void log::print(const log_type &type, const char *format, ...) {
     if ((format != nullptr) and (*format != '\0')) {
         std::lock_guard<std::mutex> log_lock(_mutex);
