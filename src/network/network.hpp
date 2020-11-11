@@ -10,6 +10,7 @@
 #define OCTOMQ_PORT_MAX (65535)
 #define OCTOMQ_NULL_SOCKET (-1)
 #define OCTOMQ_SOCKET_MAXCONN (256)
+#define OCTOMQ_LOOPBACK_IP (0x0100007F)  // 127.0.0.1 in reverse byte order
 
 namespace octopus_mq {
 

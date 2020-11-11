@@ -49,7 +49,7 @@ class adapter_binding_error : public std::runtime_error {
                                    const std::string &first_adapter_name,
                                    const std::string &second_adapter_name)
         : std::runtime_error("binding collision in '" + second_adapter_name + "' and '" +
-                             first_adapter_name + "': [" + binding_name + "].") {}
+                             first_adapter_name + "': " + binding_name + '.') {}
 };
 
 class adapter_transport_error : public std::runtime_error {

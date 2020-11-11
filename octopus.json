@@ -6,8 +6,7 @@
             "transport": "tcp",
             "port": 1883,
             "role": "broker",
-            "scope": "#",
-            "name": "main mqtt broker"
+            "scope": "#"
         },
         {
             "interface": "lo0",
@@ -15,8 +14,7 @@
             "transport": "websocket",
             "port": 1883,
             "role": "broker",
-            "scope": "#",
-            "name": "websocket mqtt broker"
+            "scope": "#"
         }
     ],
     "forwarders": [

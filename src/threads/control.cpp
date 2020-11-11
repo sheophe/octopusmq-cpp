@@ -86,6 +86,7 @@ void control::initialize_adapters() {
             break;
         }
     }
+    _initialized = not _should_stop;
 }
 
 void control::shutdown_adapters() {
@@ -132,17 +133,19 @@ void control::run(const int argc, const char **argv) {
     log::print_started(_daemon);
 
     initialize_adapters();
-    log::print(log_type::info, "initialized.");
 
-    // Following functions implements a loop of the main thread.
-    // The loop is running as long as _should_stop == false.
-    // When signal is received
-    message_pool_manager();
+    if (_initialized) {
+        log::print(log_type::info, "initialized.");
 
-    shutdown_adapters();
-    // If _should_stop is false but we ended up being here, that means the main loop has exited due
-    // to an error.
-    if (_initialized) log::print_stopped(not _should_stop);
+        // Following functions implements a loop of the main thread.
+        // The loop is running as long as _should_stop == false.
+        // When signal is received
+        message_pool_manager();
+
+        shutdown_adapters();
+    }
+
+    log::print_stopped(not _initialized);
 }
 
 void control::message_pool_manager() {

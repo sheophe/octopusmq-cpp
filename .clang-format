@@ -7,7 +7,7 @@ ConstructorInitializerAllOnOneLineOrOnePerLine: 'true'
 Cpp11BracedListStyle: 'false'
 IndentWidth: '4'
 Language: Cpp
-MaxEmptyLinesToKeep: '2'
+MaxEmptyLinesToKeep: '1'
 NamespaceIndentation: Inner
 ReflowComments: 'true'
 SortIncludes: 'false'

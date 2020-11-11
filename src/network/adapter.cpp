@@ -44,6 +44,8 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
             _name = name_field.get<string>();
         else
             throw field_type_error(OCTOMQ_ADAPTER_FIELD_NAME);
+    } else {
+        _name = protocol_name(_protocol) + '@' + _phy.name() + ':' + std::to_string(_port);
     }
 }
 
@@ -66,7 +68,9 @@ const string &adapter_settings::protocol_name() const { return protocol_name(_pr
 const nlohmann::json &adapter_settings::json() const { return _json; }
 
 bool adapter_settings::compare_binding(const ip_int ip, const port_int port) const {
-    return (ip == _phy.ip()) and (port == _port);
+    const ip_int phy_ip = _phy.ip();
+    return ((ip == phy_ip) or (ip == OCTOMQ_LOOPBACK_IP) or (phy_ip == OCTOMQ_LOOPBACK_IP)) and
+           (port == _port);
 }
 
 const string adapter_settings::binging_name() const {

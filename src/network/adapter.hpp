@@ -89,7 +89,6 @@ class adapter_interface {
 using adapter_iface_ptr = std::shared_ptr<adapter_interface>;
 using adapter_pool = std::vector<std::pair<adapter_settings_ptr, adapter_iface_ptr>>;
 
-
 }  // namespace octopus_mq
 
 #endif
