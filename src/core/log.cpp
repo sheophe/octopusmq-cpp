@@ -74,7 +74,7 @@ void log::print(const log_type &type, const string &message) {
 }
 
 void log::print_action_left(const network_event_type &event_type, const string &action) {
-    std::cout << OCTOMQ_BOLD << std::right << std::setw(15) << std::setfill(' ') << action
+    std::cout << OCTOMQ_BOLD << std::right << std::setw(16) << std::setfill(' ') << action
               << OCTOMQ_RESET;
     std::cout << OCTOMQ_BOLD << (event_type == network_event_type::receive ? " <-- " : " --> ")
               << OCTOMQ_RESET;
@@ -90,8 +90,11 @@ void log::print_action(const network_event_type &event_type, const string &actio
                        const class address &remote, const string &client_id) {
     print_time(log_type::info);
     print_action_left(event_type, action);
-    std::cout << OCTOMQ_WHITE << remote.to_string() << " (" << client_id << ')' << OCTOMQ_RESET
-              << std::endl;
+    std::cout << OCTOMQ_RESET << remote.to_string();
+    if (client_id.empty())
+        std::cout << std::endl;
+    else
+        std::cout << " (" << client_id << ')' << std::endl;
 }
 
 void log::print_event(const phy &phy, const address &remote_address, const string &client_id,

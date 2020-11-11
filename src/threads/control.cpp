@@ -104,7 +104,7 @@ void control::stop_signals(const std::vector<int> signals) {
 }
 
 void control::signal_handler(int signal) {
-    log::print(log_type::warning, "received signal \"%s\", stopping...", strsignal(signal));
+    log::print(log_type::info, "received signal \"%s\", stopping...", strsignal(signal));
     _should_stop = true;
 }
 
@@ -154,7 +154,6 @@ void control::run(const int argc, const char **argv) {
 }
 
 void control::message_pool_manager() {
-    if (not _initialized) return;
     while (not _should_stop) {
         try {
             std::this_thread::sleep_for(std::chrono::milliseconds(100));
