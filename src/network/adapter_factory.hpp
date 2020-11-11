@@ -6,7 +6,6 @@
 #include <string>
 
 #include "json.hpp"
-#include "core/message_pool.hpp"
 #include "network/adapter.hpp"
 #include "network/adapter_headers.hpp"
 #include "network/network.hpp"
@@ -25,7 +24,7 @@ class adapter_settings_factory {
 class adapter_interface_factory {
    public:
     static adapter_iface_ptr from_settings(adapter_settings_ptr settings,
-                                           message_pool &message_pool);
+                                           message_queue &message_queue);
 };
 
 }  // namespace octopus_mq

@@ -5,9 +5,12 @@
 #include <map>
 #include <string>
 #include <thread>
+#include <queue>
+#include <mutex>
+#include <condition_variable>
 
 #include "json.hpp"
-#include "core/message_pool.hpp"
+#include "core/message.hpp"
 #include "network/network.hpp"
 
 #define OCTOMQ_ADAPTER_FIELD_INTERFACE "interface"
@@ -75,23 +78,36 @@ class adapter_settings {
 
 using adapter_settings_ptr = std::shared_ptr<adapter_settings>;
 
+class message_queue;
+
 class adapter_interface {
    protected:
     adapter_settings_ptr _adapter_settings;
     // Lifetime of message pool referenced by _global_msg_pool should be greater than lifetime of
     // adapter interface instance.
-    message_pool &_global_msg_pool;
+    message_queue &_global_queue;
 
    public:
-    adapter_interface(const adapter_settings_ptr adapter_settings, message_pool &global_msg_pool);
+    adapter_interface(const adapter_settings_ptr adapter_settings, message_queue &global_queue);
 
     virtual void run() = 0;
     virtual void stop() = 0;
-    virtual void inject_publish(const std::shared_ptr<message> message) = 0;
+    virtual void inject_publish(const message_ptr message) = 0;
 };
 
 using adapter_iface_ptr = std::shared_ptr<adapter_interface>;
 using adapter_pool = std::vector<std::pair<adapter_settings_ptr, adapter_iface_ptr>>;
+using adapter_message_pair = std::pair<adapter_settings_ptr, message_ptr>;
+
+class message_queue {
+    std::queue<adapter_message_pair> _queue;
+    std::mutex _queue_mutex;
+    std::condition_variable _queue_cv;
+
+   public:
+    void push(const adapter_settings_ptr adapter, const message_ptr message);
+    bool wait_and_pop(std::chrono::milliseconds timeout, adapter_message_pair &destination);
+};
 
 }  // namespace octopus_mq
 

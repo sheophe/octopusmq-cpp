@@ -94,7 +94,25 @@ const string &adapter_settings::protocol_name(const protocol_type &protocol) {
 }
 
 adapter_interface::adapter_interface(const adapter_settings_ptr adapter_settings,
-                                     message_pool &global_msg_pool)
-    : _adapter_settings(adapter_settings), _global_msg_pool(global_msg_pool) {}
+                                     message_queue &global_queue)
+    : _adapter_settings(adapter_settings), _global_queue(global_queue) {}
+
+void message_queue::push(const adapter_settings_ptr adapter, const message_ptr message) {
+    std::unique_lock<std::mutex> queue_lock(_queue_mutex);
+    _queue.push(std::make_pair(adapter, message));
+    queue_lock.unlock();
+    _queue_cv.notify_one();
+}
+
+bool message_queue::wait_and_pop(std::chrono::milliseconds timeout,
+                                 adapter_message_pair &destination) {
+    std::unique_lock<std::mutex> queue_lock(_queue_mutex);
+    if (_queue_cv.wait_for(queue_lock, timeout, [this] { return not _queue.empty(); })) {
+        destination = _queue.front();
+        _queue.pop();
+        return true;
+    } else
+        return false;
+}
 
 }  // namespace octopus_mq

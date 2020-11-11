@@ -2,13 +2,13 @@
 
 namespace octopus_mq::dds {
 
-peer::peer(const octopus_mq::adapter_settings_ptr adapter_settings, message_pool& global_queue)
+peer::peer(const octopus_mq::adapter_settings_ptr adapter_settings, message_queue& global_queue)
     : adapter_interface(adapter_settings, global_queue) {}
 
 void peer::run() {}
 
 void peer::stop() {}
 
-void peer::inject_publish(const std::shared_ptr<message> message) { (*message); }
+void peer::inject_publish(const message_ptr message) { (*message); }
 
 }  // namespace octopus_mq::dds

@@ -10,9 +10,9 @@
 #include <tuple>
 #include <vector>
 
+#include "core/message.hpp"
 #include "network/adapter.hpp"
 #include "network/network.hpp"
-#include "core/message_pool.hpp"
 
 namespace octopus_mq {
 
@@ -65,7 +65,7 @@ class control {
     static inline bool _daemon = false;
     static inline bool _should_stop = false;
 
-    static inline message_pool _message_pool = message_pool();
+    static inline message_queue _message_queue = message_queue();
     static inline adapter_pool _adapter_pool = adapter_pool();
 
     static void arg_daemon();

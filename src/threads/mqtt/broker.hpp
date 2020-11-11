@@ -1,7 +1,7 @@
 #ifndef OCTOMQ_MQTT_BROKER_H_
 #define OCTOMQ_MQTT_BROKER_H_
 
-#include "core/message_pool.hpp"
+#include "core/message.hpp"
 #include "core/topic.hpp"
 #include "network/mqtt/adapter.hpp"
 #include "network/adapter.hpp"
@@ -96,13 +96,13 @@ class broker final : public adapter_interface {
     inline void worker();
 
    public:
-    broker(const octopus_mq::adapter_settings_ptr adapter_settings, message_pool& global_queue);
+    broker(const octopus_mq::adapter_settings_ptr adapter_settings, message_queue& global_queue);
 
     void run();
     void stop();
 
-    void inject_publish(const std::shared_ptr<message> message);
-    void inject_publish(const std::shared_ptr<message> message, mqtt_cpp::v5::properties props);
+    void inject_publish(const message_ptr message);
+    void inject_publish(const message_ptr message, mqtt_cpp::v5::properties props);
 };
 
 }  // namespace octopus_mq::mqtt

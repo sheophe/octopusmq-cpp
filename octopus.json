@@ -9,7 +9,7 @@
             "scope": "#"
         },
         {
-            "interface": "en0",
+            "interface": "lo0",
             "protocol": "mqtt",
             "transport": "websocket",
             "port": 9001,

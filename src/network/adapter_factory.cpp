@@ -36,7 +36,7 @@ adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &j
 }
 
 adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr settings,
-                                                           message_pool &message_pool) {
+                                                           message_queue &message_queue) {
     if (settings == nullptr) throw adapter_not_initialized();
 
     // Protocol is checked in adapter_settings_factory.
@@ -49,17 +49,17 @@ adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr 
             switch (mqtt_settings->transport()) {
                 case transport_type::tcp:
                     return std::make_shared<mqtt::broker<mqtt_cpp::server<>>>(settings,
-                                                                              message_pool);
+                                                                              message_queue);
                 case transport_type::websocket:
                     return std::make_shared<mqtt::broker<mqtt_cpp::server_ws<>>>(settings,
-                                                                                 message_pool);
+                                                                                 message_queue);
 #ifdef OCTOMQ_ENABLE_TLS
                 case transport_type::tls:
                     return std::make_shared<mqtt::broker<mqtt_cpp::server_tls<>>>(settings,
-                                                                                  message_pool);
+                                                                                  message_queue);
                 case transport_type::tls_websocket:
                     return std::make_shared<mqtt::broker<mqtt_cpp::server_tls_ws<>>>(settings,
-                                                                                     message_pool);
+                                                                                     message_queue);
 #else
                 case transport_type::tls:
                 case transport_type::tls_websocket:
@@ -76,7 +76,7 @@ adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr 
                 dds_settings->transport() != transport_type::tcp)
                 throw adapter_transport_error(settings->name(), settings->protocol_name());
 
-            return std::make_shared<dds::peer>(settings, message_pool);
+            return std::make_shared<dds::peer>(settings, message_queue);
         };
     }
 }

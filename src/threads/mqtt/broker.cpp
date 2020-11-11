@@ -40,7 +40,7 @@ inline void broker<Server>::worker() {
 
 template <typename Server>
 broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
-                       message_pool& global_queue)
+                       message_queue& global_queue)
     : adapter_interface(adapter_settings, global_queue) {
     // When octopus_mq::phy gets the name defined in OCTOMQ_IFACE_NAME_ANY
     // instead of correct interface name (which means any interface should be listened),

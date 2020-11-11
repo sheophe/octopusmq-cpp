@@ -79,7 +79,8 @@ void control::daemonize() {
 void control::initialize_adapters() {
     for (auto &adapter : _adapter_pool) {
         try {
-            adapter.second = adapter_interface_factory::from_settings(adapter.first, _message_pool);
+            adapter.second =
+                adapter_interface_factory::from_settings(adapter.first, _message_queue);
         } catch (const std::runtime_error &re) {
             log::print(log_type::fatal, "adapter '" + adapter.first->name() + "': " + re.what());
             _should_stop = true;
@@ -104,9 +105,9 @@ void control::print_adapters() {
     log::print(log_type::info, "running %lu %s:", pool_size,
                (pool_size > 1) ? "adapters" : "adapter");
     for (auto &adapter : _adapter_pool)
-        log::print(log_type::more, adapter.first->name() + OCTOMQ_WHITE + " (listening on " +
+        log::print(log_type::more, adapter.first->name() + OCTOMQ_WHITE + " listening on " +
                                        adapter.first->phy().ip_string() + ':' +
-                                       std::to_string(adapter.first->port()) + ')' + OCTOMQ_RESET);
+                                       std::to_string(adapter.first->port()) + OCTOMQ_RESET);
     log::print_empty_line();
 }
 
@@ -156,11 +157,9 @@ void control::run(const int argc, const char **argv) {
 
     if (_initialized) {
         print_adapters();
-
         // Following functions implements a loop of the main thread.
         // The loop is running as long as _should_stop == false.
         message_pool_manager();
-
         shutdown_adapters();
     }
 
@@ -170,7 +169,16 @@ void control::run(const int argc, const char **argv) {
 void control::message_pool_manager() {
     while (not _should_stop) {
         try {
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+            // This is the only place where message_pool should be read.
+            // All adapters strictly push to message_pool, but never read.
+            // This function is responsible for reading and calling inject_publish on all adapters
+            adapter_message_pair amp;
+            if (_message_queue.wait_and_pop(std::chrono::milliseconds(100), amp)) {
+                // New messages are avaliable
+                // Pop them from the message_pool and deliver to every adapter excep the origin
+                for (auto &adapter : _adapter_pool)
+                    if (adapter.first != amp.first) adapter.second->inject_publish(amp.second);
+            }
         } catch (const std::runtime_error &re) {
             log::print(log_type::fatal, re.what());
             break;
