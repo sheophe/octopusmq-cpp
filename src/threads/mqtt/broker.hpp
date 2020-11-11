@@ -12,6 +12,7 @@
 
 #include <set>
 #include <mutex>
+#include <thread>
 #include <boost/lexical_cast.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
@@ -78,11 +79,13 @@ class broker final : public adapter_interface {
    private:
     boost::asio::io_context _ioc;
     std::unique_ptr<Server> _server;
+    std::thread _thread;
     std::set<connection_sp> _connections;
     subscription_container _subs;
     std::mutex _subs_mutex;
 
     inline void close_connection(connection_sp const& con);
+    void worker();
 
    public:
     broker(const octopus_mq::adapter_settings_ptr adapter_settings, message_pool& global_queue);

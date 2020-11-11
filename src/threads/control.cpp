@@ -86,11 +86,16 @@ void control::initialize_adapters() {
             break;
         }
     }
+    // Running adapters only after initialization was successful
+    for (auto &adapter : _adapter_pool) adapter.second->run();
     _initialized = not _should_stop;
 }
 
 void control::shutdown_adapters() {
-    for (auto &adapter : _adapter_pool) adapter.second.reset();
+    for (auto &adapter : _adapter_pool) {
+        adapter.second->stop();
+        adapter.second.reset();
+    }
     _adapter_pool.clear();
 }
 

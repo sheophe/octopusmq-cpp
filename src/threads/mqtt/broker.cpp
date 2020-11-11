@@ -15,6 +15,12 @@ inline void broker<Server>::close_connection(connection_sp const& con) {
 }
 
 template <typename Server>
+void broker<Server>::worker() {
+    _server->listen();
+    _ioc.run();
+}
+
+template <typename Server>
 broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                        message_pool& global_queue)
     : adapter_interface(adapter_settings, global_queue) {
@@ -42,7 +48,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
         auto& ep = *spep;
         std::weak_ptr<connection> wp(spep);
 
-        log::print(log_type::info, "broker: accepted new connection.");
+        log::print(log_type::info, "mqtt: new connection accepted.");
         // Pass spep to keep lifetime.
         // It makes sure wp.lock() never return nullptr in the handlers below
         // including close_handler and error_handler.
@@ -295,14 +301,14 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
 template <typename Server>
 void broker<Server>::run() {
-    _server->listen();
-    _ioc.run();
+    _thread = std::thread(&broker<Server>::worker, this);
 }
 
 template <typename Server>
 void broker<Server>::stop() {
     _server->close();
     _ioc.stop();
+    if (_thread.joinable()) _thread.join();
 }
 
 template <typename Server>

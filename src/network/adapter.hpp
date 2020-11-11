@@ -4,6 +4,7 @@
 #include <list>
 #include <map>
 #include <string>
+#include <thread>
 
 #include "json.hpp"
 #include "core/message_pool.hpp"

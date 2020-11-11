@@ -1,17 +1,9 @@
 {
     "adapters": [
         {
-            "interface": "en0",
-            "protocol": "mqtt",
-            "transport": "tcp",
-            "port": 1883,
-            "role": "broker",
-            "scope": "#"
-        },
-        {
             "interface": "lo0",
             "protocol": "mqtt",
-            "transport": "websocket",
+            "transport": "tcp",
             "port": 1883,
             "role": "broker",
             "scope": "#"
