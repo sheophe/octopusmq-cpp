@@ -172,11 +172,7 @@ void control::message_pool_manager() {
             // This is the only place where message_pool should be read.
             // All adapters strictly push to message_pool, but never read.
             // This function is responsible for reading and calling inject_publish on all adapters
-            adapter_message_pair amp;
-            if (_message_queue.wait_and_pop(std::chrono::milliseconds(100), amp)) {
-                for (auto &adapter : _adapter_pool)
-                    if (adapter.first != amp.first) adapter.second->inject_publish(amp.second);
-            }
+            _message_queue.wait_and_pop_all(std::chrono::milliseconds(100), _adapter_pool);
         } catch (const std::runtime_error &re) {
             log::print(log_type::fatal, re.what());
             break;
