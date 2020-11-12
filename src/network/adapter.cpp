@@ -115,4 +115,18 @@ bool message_queue::wait_and_pop(std::chrono::milliseconds timeout,
         return false;
 }
 
+bool message_queue::wait_and_pop_all(std::chrono::milliseconds timeout, adapter_pool &pool) {
+    std::unique_lock<std::mutex> queue_lock(_queue_mutex);
+    if (_queue_cv.wait_for(queue_lock, timeout, [this] { return not _queue.empty(); })) {
+        while (not _queue.empty()) {
+            adapter_message_pair item = _queue.front();
+            _queue.pop();
+            for (auto &adapter : pool)
+                if (adapter.first != item.first) adapter.second->inject_publish(item.second);
+        }
+        return true;
+    } else
+        return false;
+}
+
 }  // namespace octopus_mq
