@@ -73,10 +73,8 @@ void log::print(const log_type &type, const string &message) {
 }
 
 void log::print_action_left(const network_event_type &event_type, const string &action) {
-    std::cout << OCTOMQ_BOLD << std::right << std::setw(18) << std::setfill(' ') << action
-              << OCTOMQ_RESET;
-    std::cout << OCTOMQ_BOLD << (event_type == network_event_type::receive ? " <-- " : " --> ")
-              << OCTOMQ_RESET;
+    std::cout << OCTOMQ_RESET << std::right << std::setw(18) << std::setfill(' ') << action
+              << (event_type == network_event_type::receive ? " <-- " : " --> ") << OCTOMQ_RESET;
 }
 
 void log::print_action(const network_event_type &event_type, const string &action) {
