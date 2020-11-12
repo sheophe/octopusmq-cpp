@@ -175,6 +175,7 @@ void control::message_pool_manager() {
             _message_queue.wait_and_pop_all(std::chrono::milliseconds(100), _adapter_pool);
         } catch (const std::runtime_error &re) {
             log::print(log_type::fatal, re.what());
+            _initialized = false;
             break;
         }
     }
