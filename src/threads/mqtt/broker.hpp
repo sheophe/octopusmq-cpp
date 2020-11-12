@@ -9,9 +9,10 @@
 
 #include "mqtt_server_cpp.hpp"
 
-#include <set>
 #include <mutex>
+#include <set>
 #include <thread>
+
 #include <boost/lexical_cast.hpp>
 #include <boost/multi_index_container.hpp>
 #include <boost/multi_index/ordered_index.hpp>
