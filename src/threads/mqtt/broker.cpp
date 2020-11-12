@@ -348,6 +348,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                     OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             }
             _subs_lock.unlock();
+            this->share(topic_name, contents, pubopts);
             ++(this->_meta[sp].n_publishes);
             return true;
         });
