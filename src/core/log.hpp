@@ -6,7 +6,6 @@
 #include <mutex>
 #include <string>
 
-#include "core/topic.hpp"
 #include "network/adapter.hpp"
 #include "network/network.hpp"
 

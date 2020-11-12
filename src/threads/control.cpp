@@ -159,14 +159,14 @@ void control::run(const int argc, const char **argv) {
         print_adapters();
         // Following functions implements a loop of the main thread.
         // The loop is running as long as _should_stop == false.
-        message_pool_manager();
+        message_queue_manager();
         shutdown_adapters();
     }
 
     log::print_stopped(not _initialized);
 }
 
-void control::message_pool_manager() {
+void control::message_queue_manager() {
     while (not _should_stop) {
         try {
             // This is the only place where message_pool should be read.
@@ -175,7 +175,7 @@ void control::message_pool_manager() {
             _message_queue.wait_and_pop_all(std::chrono::milliseconds(100), _adapter_pool);
         } catch (const std::runtime_error &re) {
             log::print(log_type::fatal, re.what());
-            _initialized = false;
+            _initialized = false;  // To indicate an error in log::print_stopped()
             break;
         }
     }

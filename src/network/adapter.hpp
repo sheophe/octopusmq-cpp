@@ -1,16 +1,16 @@
 #ifndef OCTOMQ_ADAPTER_H_
 #define OCTOMQ_ADAPTER_H_
 
+#include <condition_variable>
 #include <list>
 #include <map>
+#include <mutex>
+#include <queue>
 #include <string>
 #include <thread>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
 
 #include "json.hpp"
-#include "core/message.hpp"
+#include "network/message.hpp"
 #include "network/network.hpp"
 
 #define OCTOMQ_ADAPTER_FIELD_INTERFACE "interface"

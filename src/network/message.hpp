@@ -4,7 +4,6 @@
 #include <string>
 #include <vector>
 
-#include "core/topic.hpp"
 #include "network/network.hpp"
 
 namespace octopus_mq {

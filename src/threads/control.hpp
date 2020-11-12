@@ -10,8 +10,8 @@
 #include <tuple>
 #include <vector>
 
-#include "core/message.hpp"
 #include "network/adapter.hpp"
+#include "network/message.hpp"
 #include "network/network.hpp"
 
 namespace octopus_mq {
@@ -75,7 +75,7 @@ class control {
     static void shutdown_adapters();
     static void print_adapters();
 
-    static void message_pool_manager();  // Main thread routine
+    static void message_queue_manager();  // Main thread routine
 
     static inline std::map<string, arg_handler> _argument_map = { { "--daemon", arg_daemon },
                                                                   { "--help", arg_help } };

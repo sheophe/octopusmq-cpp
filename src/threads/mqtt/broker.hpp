@@ -1,10 +1,9 @@
 #ifndef OCTOMQ_MQTT_BROKER_H_
 #define OCTOMQ_MQTT_BROKER_H_
 
-#include "core/message.hpp"
-#include "core/topic.hpp"
-#include "network/mqtt/adapter.hpp"
 #include "network/adapter.hpp"
+#include "network/message.hpp"
+#include "network/mqtt/adapter.hpp"
 #include "network/network.hpp"
 #include "threads/mqtt/config.hpp"
 

@@ -1,4 +1,4 @@
-#include "core/message.hpp"
+#include "network/message.hpp"
 
 namespace octopus_mq {
 

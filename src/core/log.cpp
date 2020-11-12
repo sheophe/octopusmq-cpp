@@ -6,8 +6,6 @@
 #include <sstream>
 #include <iostream>
 
-#include "core/topic.hpp"
-
 namespace octopus_mq {
 
 using std::chrono::duration_cast, std::chrono::milliseconds, std::chrono::system_clock;

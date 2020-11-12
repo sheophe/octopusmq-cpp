@@ -49,8 +49,7 @@ endif()
 set(SRC_LIST
     ${CORE_DIR}/log.cpp
     ${CORE_DIR}/settings.cpp
-    ${CORE_DIR}/topic.cpp
-    ${CORE_DIR}/message.cpp
+    ${NETWORK_DIR}/message.cpp
     ${NETWORK_DIR}/network.cpp
     ${NETWORK_DIR}/adapter.cpp
     ${NETWORK_DIR}/adapter_factory.cpp

@@ -1,8 +1,8 @@
 #include "network/adapter_factory.hpp"
 
 #include "core/error.hpp"
-#include "threads/mqtt/broker.hpp"
 #include "threads/dds/peer.hpp"
+#include "threads/mqtt/broker.hpp"
 
 namespace octopus_mq {
 
