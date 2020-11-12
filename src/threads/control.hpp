@@ -17,9 +17,6 @@
 namespace octopus_mq {
 
 using std::string;
-
-using thread_id = uint32_t;
-
 using arg_handler = void (*)();
 
 class control_settings {
