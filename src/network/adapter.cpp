@@ -126,8 +126,8 @@ size_t message_queue::wait_and_pop_all(std::chrono::milliseconds timeout, adapte
             for (auto &adapter : pool)
                 if (adapter.first != item.first) adapter.second->inject_publish(item.second);
         }
-    } else
-        return popped;
+    }
+    return popped;
 }
 
 }  // namespace octopus_mq
