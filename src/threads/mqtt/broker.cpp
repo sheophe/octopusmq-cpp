@@ -422,6 +422,11 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
     for (; r.first != r.second; ++r.first) {
         r.first->con->publish(topic_name, contents,
                               std::min(r.first->qos_value, pubopts.get_qos()));
+        auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
+        address remote_address(llre.address().to_string(), llre.port());
+        log::print_event(_adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
+                         network_event_type::send,
+                         OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
     }
 }
 
@@ -442,6 +447,11 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message,
                                       : mqtt_cpp::retain::no;
         r.first->con->publish(topic_name, contents,
                               std::min(r.first->qos_value, pubopts.get_qos()) | retain, props);
+        auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
+        address remote_address(llre.address().to_string(), llre.port());
+        log::print_event(_adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
+                         network_event_type::send,
+                         OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
     }
 }
 
