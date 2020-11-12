@@ -11,7 +11,6 @@
 
 #define OCTOMQ_MAX_LOG_LINE_LENGTH (256)
 #define OCTOMQ_VERSION_STRING "1.2.0"
-#define OCTOMQ_BUILD_NUMBER (4)
 #define OCTOMQ_USE_EMOJI_START_MESSAGE
 
 #define OCTOMQ_BLACK "\u001b[30m"
@@ -42,7 +41,6 @@ class log {
     static std::mutex _mutex;
     static char _buffer[OCTOMQ_MAX_LOG_LINE_LENGTH];
     static const char *_version_string;
-    static const unsigned int _build_number = OCTOMQ_BUILD_NUMBER;
     static long long _start_timestamp;
     static bool _relative_timestamp;
     static string _last_adapter_name;
@@ -73,7 +71,6 @@ class log {
                              const class address &remote, const string &client_id);
     static void print_help();
     static const char *version_string();
-    static unsigned int build_number();
 
     // Utility functions
     static string size_to_string(const size_t &size);

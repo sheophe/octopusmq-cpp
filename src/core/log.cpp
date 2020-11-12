@@ -103,7 +103,7 @@ void log::print_event(const string &adapter_name, const address &remote_address,
     print_time(log_type::more);
     if (_last_adapter_name != adapter_name) {
         std::cout << OCTOMQ_BOLD << std::left << std::setw(35) << std::setfill(' ') << adapter_name
-                  << ':' << OCTOMQ_RESET << '\n';
+                  << OCTOMQ_RESET << std::endl;
         _last_adapter_name = adapter_name;
     }
     print_action(event_type, action, remote_address, client_id);
@@ -121,8 +121,6 @@ void log::print_help() {
 }
 
 const char *log::version_string() { return _version_string; }
-
-unsigned int log::build_number() { return _build_number; }
 
 string log::size_to_string(const size_t &size) {
     std::ostringstream str_stream;
