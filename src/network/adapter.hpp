@@ -83,7 +83,7 @@ class message_queue;
 class adapter_interface {
    protected:
     adapter_settings_ptr _adapter_settings;
-    // Lifetime of message pool referenced by _global_msg_pool should be greater than lifetime of
+    // Lifetime of message queue referenced by _global_queue should be greater than lifetime of
     // adapter interface instance.
     message_queue &_global_queue;
 
