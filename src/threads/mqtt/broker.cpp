@@ -22,6 +22,29 @@ namespace octopus_mq::mqtt {
 
 using namespace boost::asio;
 
+static string boost_error_to_string(const int& error) {
+    switch (error) {
+        case boost::asio::error::eof:
+            return "connection lost";
+        case boost::asio::error::connection_aborted:
+            return "connection aborted";
+        case boost::asio::error::connection_refused:
+            return "connection refused";
+        case boost::asio::error::connection_reset:
+            return "connection reset";
+        case boost::asio::error::broken_pipe:
+            return "broken pipe";
+        case boost::asio::error::host_unreachable:
+            return "no route to host";
+        case boost::asio::error::message_size:
+            return "message too long";
+        case boost::asio::error::network_down:
+            return "network is down";
+        default:
+            return "error " + std::to_string(error);
+    }
+}
+
 template <typename Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
     this->_connections.erase(con);
@@ -90,8 +113,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         // Set connection level handlers (lower than MQTT)
         ep.set_close_handler([this, wp]() {
-            log::print(log_type::info,
-                       "adapter '" + _adapter_settings->name() + "': connection closed.");
+            log::print(log_type::info, _adapter_settings->name() + ": connection closed.");
             auto sp = wp.lock();
             BOOST_ASSERT(sp);
             this->close_connection(sp);
@@ -103,11 +125,9 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             // Connection may be already closed by close_handler
             // In this case socket error may pop up, but that is expected
             if (_connections.find(sp) != _connections.end()) {
-                std::string message = ec.message();
-                message[0] = std::tolower(message[0]);
-                message += " at " + _meta[sp].address.to_string();
-                log::print(log_type::error,
-                           "adapter '" + _adapter_settings->name() + "': " + message);
+                std::string message =
+                    boost_error_to_string(ec.value()) + " at " + _meta[sp].address.to_string();
+                log::print(log_type::error, _adapter_settings->name() + ": " + message);
                 this->close_connection(sp);
             }
         });
