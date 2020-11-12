@@ -39,6 +39,16 @@ inline void broker<Server>::worker() {
 }
 
 template <typename Server>
+inline void broker<Server>::share(mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents,
+                                  mqtt_cpp::publish_options pubopts) {
+    message_payload payload(contents.begin(), contents.end());
+    std::string topic(topic_name);
+    message_ptr shared_message =
+        std::make_shared<message>(std::move(payload), topic, std::uint8_t(pubopts));
+    _global_queue.push(_adapter_settings, shared_message);
+}
+
+template <typename Server>
 broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                        message_queue& global_queue)
     : adapter_interface(adapter_settings, global_queue) {
@@ -196,6 +206,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                     OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             }
             _subs_lock.unlock();
+            this->share(topic_name, contents, pubopts);
             ++(this->_meta[sp].n_publishes);
             return true;
         });
@@ -401,8 +412,8 @@ void broker<Server>::stop() {
 template <typename Server>
 void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
     mqtt_cpp::buffer topic_name(std::string_view(message->topic().data(), message->topic().size()));
-    mqtt_cpp::buffer contents(std::string_view(
-        reinterpret_cast<const char*>(message->payload().data()), message->payload().size()));
+    mqtt_cpp::buffer contents(
+        std::string_view(message->payload().data(), message->payload().size()));
     mqtt_cpp::publish_options pubopts(message->pubopts());
 
     std::lock_guard<std::mutex> _subs_lock(_subs_mutex);
@@ -418,8 +429,8 @@ template <typename Server>
 void broker<Server>::inject_publish(const std::shared_ptr<message> message,
                                     mqtt_cpp::v5::properties props) {
     mqtt_cpp::buffer topic_name(std::string_view(message->topic().data(), message->topic().size()));
-    mqtt_cpp::buffer contents(std::string_view(
-        reinterpret_cast<const char*>(message->payload().data()), message->payload().size()));
+    mqtt_cpp::buffer contents(
+        std::string_view(message->payload().data(), message->payload().size()));
     mqtt_cpp::publish_options pubopts(message->pubopts());
 
     std::lock_guard<std::mutex> _subs_lock(_subs_mutex);

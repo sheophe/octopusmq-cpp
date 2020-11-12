@@ -11,7 +11,7 @@ namespace octopus_mq {
 
 using std::string;
 
-using message_payload = std::vector<unsigned char>;
+using message_payload = std::vector<char>;
 
 class message {
     message_payload
@@ -29,6 +29,7 @@ class message {
     explicit message(message_payload &&payload);
     message(const message_payload &payload) = delete;
     message(message_payload &&payload, const string &origin_client_id);
+    message(message_payload &&payload, const string &topic, const uint8_t pubopts);
     message(message_payload &&payload, const uint8_t pubopts);
 
     void payload(const message_payload &payload);

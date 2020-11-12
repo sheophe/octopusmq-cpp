@@ -9,6 +9,9 @@ message::message(message_payload &&payload) : _payload(move(payload)) {}
 message::message(message_payload &&payload, const string &origin_client_id)
     : _payload(move(payload)), _origin_client_id(origin_client_id), _origin_pubopts(0) {}
 
+message::message(message_payload &&payload, const string &topic, const uint8_t pubopts)
+    : _payload(move(payload)), _topic(topic), _origin_pubopts(pubopts) {}
+
 message::message(message_payload &&payload, const uint8_t pubopts)
     : _payload(move(payload)), _origin_pubopts(pubopts) {}
 

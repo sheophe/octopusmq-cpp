@@ -95,6 +95,9 @@ class broker final : public adapter_interface {
     inline void close_connection(connection_sp const& con);
     inline void worker();
 
+    inline void share(mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents,
+                      mqtt_cpp::publish_options pubopts);
+
    public:
     broker(const octopus_mq::adapter_settings_ptr adapter_settings, message_queue& global_queue);
 

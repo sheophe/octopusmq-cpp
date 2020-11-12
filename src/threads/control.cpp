@@ -174,8 +174,6 @@ void control::message_pool_manager() {
             // This function is responsible for reading and calling inject_publish on all adapters
             adapter_message_pair amp;
             if (_message_queue.wait_and_pop(std::chrono::milliseconds(100), amp)) {
-                // New messages are avaliable
-                // Pop them from the message_pool and deliver to every adapter excep the origin
                 for (auto &adapter : _adapter_pool)
                     if (adapter.first != amp.first) adapter.second->inject_publish(amp.second);
             }
