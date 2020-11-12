@@ -11,15 +11,10 @@ namespace octopus_mq {
 using std::chrono::duration_cast, std::chrono::milliseconds, std::chrono::system_clock;
 
 std::mutex log::_mutex = std::mutex();
-
 char log::_buffer[OCTOMQ_MAX_LOG_LINE_LENGTH] = { 0 };
-
 const char *log::_version_string = OCTOMQ_VERSION_STRING;
-
 long long log::_start_timestamp = 0;
-
 bool log::_relative_timestamp = false;
-
 string log::_last_adapter_name = string();
 
 void log::print_time(const log_type &type) {
@@ -108,7 +103,7 @@ void log::print_event(const string &adapter_name, const address &remote_address,
     print_time(log_type::more);
     if (_last_adapter_name != adapter_name) {
         std::cout << OCTOMQ_BOLD << std::left << std::setw(35) << std::setfill(' ') << adapter_name
-                  << OCTOMQ_RESET << '\n';
+                  << ':' << OCTOMQ_RESET << '\n';
         _last_adapter_name = adapter_name;
     }
     print_action(event_type, action, remote_address, client_id);
