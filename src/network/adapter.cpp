@@ -8,15 +8,12 @@ using std::string;
 
 static const string unknwon_protocol = "(unknown)";
 
-adapter_settings::adapter_settings(const protocol_type &protocol)
-    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _generated_name(false) {}
-
-adapter_settings::adapter_settings(const protocol_type &protocol, const string &phy,
-                                   const port_int &port)
-    : _phy(octopus_mq::phy(phy)), _port(port), _protocol(protocol), _generated_name(false) {}
-
 adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann::json &json)
-    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _generated_name(false), _json(json) {
+    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _generated_name(false) {
+    // Parsing protocol name
+    // It exists and is string. That was already checked by adapter_factory
+    _protocol_name = json[OCTOMQ_ADAPTER_FIELD_PROTOCOL].get<string>();
+
     // Parsing interface
     if (not json.contains(OCTOMQ_ADAPTER_FIELD_INTERFACE))
         throw missing_field_error(OCTOMQ_ADAPTER_FIELD_INTERFACE);
@@ -46,7 +43,7 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
         else
             throw field_type_error(OCTOMQ_ADAPTER_FIELD_NAME);
     } else {
-        _name = '[' + _phy.name() + ':' + std::to_string(_port) + "] " + protocol_name(_protocol);
+        _name = '[' + _phy.name() + ':' + std::to_string(_port) + "] " + _protocol_name;
         _generated_name = true;
     }
 }
@@ -71,9 +68,7 @@ const protocol_type &adapter_settings::protocol() const { return _protocol; }
 
 const string &adapter_settings::name() const { return _name; }
 
-const string &adapter_settings::protocol_name() const { return protocol_name(_protocol); }
-
-const nlohmann::json &adapter_settings::json() const { return _json; }
+const string &adapter_settings::protocol_name() const { return _protocol_name; }
 
 bool adapter_settings::compare_binding(const ip_int ip, const port_int port) const {
     const ip_int phy_ip = _phy.ip();
@@ -84,13 +79,6 @@ bool adapter_settings::compare_binding(const ip_int ip, const port_int port) con
 const string adapter_settings::binging_name() const {
     const address adapter_address(_phy.ip(), _port);
     return adapter_address.to_string();
-}
-
-const string &adapter_settings::protocol_name(const protocol_type &protocol) {
-    if (auto iter = _protocol_name.find(protocol); iter != _protocol_name.end())
-        return iter->second;
-    else
-        return unknwon_protocol;
 }
 
 adapter_interface::adapter_interface(const adapter_settings_ptr adapter_settings,

@@ -7,8 +7,12 @@
 
 #include "json.hpp"
 #include "network/adapter.hpp"
-#include "network/adapter_headers.hpp"
 #include "network/network.hpp"
+
+#include "network/mqtt/adapter.hpp"
+#ifdef OCTOMQ_ENABLE_DDS
+#include "network/dds/adapter.hpp"
+#endif
 
 namespace octopus_mq {
 

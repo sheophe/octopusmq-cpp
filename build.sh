@@ -3,7 +3,7 @@ OCTOMQ_OPT_FLAGS=unset
 
 usage()
 {
-    echo "usage: build.sh [ -c | --clean ] [ --static ] [ --optimize ] [ --tls ]"
+    echo "usage: build.sh [ -c | --clean ] [ --static ] [ --optimize ] [ --tls ] [ --no-dds ]"
     exit 2
 }
 
@@ -24,6 +24,9 @@ do
             ;;
         --tls)
             OCTOMQ_OPT_FLAGS="$OCTOMQ_OPT_FLAGS -D OCTOMQ_ENABLE_TLS=ON"
+            ;;
+        --no-dds)
+            OCTOMQ_OPT_FLAGS="$OCTOMQ_OPT_FLAGS -D OCTOMQ_ENABLE_DDS=OFF"
             ;;
         --help)
             usage

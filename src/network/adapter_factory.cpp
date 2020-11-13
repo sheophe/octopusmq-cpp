@@ -1,8 +1,10 @@
 #include "network/adapter_factory.hpp"
 
 #include "core/error.hpp"
-#include "threads/dds/peer.hpp"
 #include "threads/mqtt/broker.hpp"
+#ifdef OCTOMQ_ENABLE_DDS
+#include "threads/dds/peer.hpp"
+#endif
 
 namespace octopus_mq {
 
@@ -25,9 +27,11 @@ adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &j
                 case protocol_type::mqtt:
                     return std::make_shared<mqtt::adapter_settings>(json);
                 case protocol_type::dds:
+#ifdef OCTOMQ_ENABLE_DDS
                     return std::make_shared<dds::adapter_settings>(json);
-                default:
+#else
                     throw unknown_protocol_error(protocol_name);
+#endif
             }
         } else
             throw unknown_protocol_error(protocol_name);
@@ -68,7 +72,9 @@ adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr 
                     throw adapter_transport_error(settings->name(), settings->protocol_name());
             }
         };
-        case protocol_type::dds: {
+        case protocol_type::dds:
+#ifdef OCTOMQ_ENABLE_DDS
+        {
             dds::adapter_settings_ptr dds_settings =
                 std::static_pointer_cast<dds::adapter_settings>(settings);
 
@@ -78,6 +84,9 @@ adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr 
 
             return std::make_shared<dds::peer>(settings, message_queue);
         };
+#else
+            return nullptr;
+#endif
     }
 }
 

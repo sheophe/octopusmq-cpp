@@ -34,7 +34,6 @@ class adapter_settings : public octopus_mq::adapter_settings {
     };
 
    public:
-    adapter_settings();
     adapter_settings(const nlohmann::json &json);
 
     void transport(const transport_type &transport);

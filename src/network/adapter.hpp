@@ -44,17 +44,11 @@ class adapter_settings {
     phy _phy;
     port_int _port;
     protocol_type _protocol;
+    string _protocol_name;
     string _name;
     bool _generated_name;
-    nlohmann::json _json;
-
-    static inline const std::map<protocol_type, string> _protocol_name = {
-        { protocol_type::mqtt, "mqtt" }, { protocol_type::dds, "dds" }
-    };
 
    public:
-    adapter_settings(const protocol_type &protocol);
-    adapter_settings(const protocol_type &protocol, const string &phy, const port_int &port);
     adapter_settings(const protocol_type &protocol, const nlohmann::json &json);
 
     void phy(const class phy &phy);
@@ -72,8 +66,6 @@ class adapter_settings {
     bool compare_binding(const ip_int ip, const port_int port) const;
     const string binging_name() const;
     const string &protocol_name() const;
-
-    static const string &protocol_name(const protocol_type &protocol);
 };
 
 using adapter_settings_ptr = std::shared_ptr<adapter_settings>;

@@ -35,12 +35,6 @@ static octopus_mq::adapter_settings_parser adapter_settings_parser = {
       } }
 };
 
-adapter_settings::adapter_settings()
-    : octopus_mq::adapter_settings(protocol_type::mqtt),
-      _transport(transport_type::tcp),
-      _role(adapter_role::broker),
-      _scope({ "#" }) {}
-
 adapter_settings::adapter_settings(const nlohmann::json &json)
     : octopus_mq::adapter_settings(protocol_type::mqtt, json) {
     // Parse protocol-specific fields from JSON
