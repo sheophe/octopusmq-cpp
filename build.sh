@@ -3,7 +3,7 @@ OCTOMQ_OPT_FLAGS=unset
 
 usage()
 {
-    echo "usage: build.sh [ -c | --clean ] [ --optimize ] [ --tls ]"
+    echo "usage: build.sh [ -c | --clean ] [ --static ] [ --optimize ] [ --tls ]"
     exit 2
 }
 
@@ -13,10 +13,14 @@ do
         -c | --clean)
             echo "-- Cleaning build directory"
             rm -rf build/
+            rm -rf src/threads/dds/message
             mkdir build/
             ;;
         --optimize)
             OCTOMQ_OPT_FLAGS="$OCTOMQ_OPT_FLAGS -D OCTOMQ_RELEASE_COMPILATION=ON"
+            ;;
+        --static)
+            OCTOMQ_OPT_FLAGS="$OCTOMQ_OPT_FLAGS -D OCTOMQ_USE_STATIC_LIBS=ON"
             ;;
         --tls)
             OCTOMQ_OPT_FLAGS="$OCTOMQ_OPT_FLAGS -D OCTOMQ_ENABLE_TLS=ON"
