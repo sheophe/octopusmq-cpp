@@ -47,18 +47,13 @@ static string boost_error_to_string(const int& error) {
 
 template <typename Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
-    this->_connections.erase(con);
-    this->_meta.erase(con);
-    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
-    auto& idx = this->_subs.template get<connection_tag>();
+    _connections.erase(con);
+    _meta.erase(con);
+    std::lock_guard<std::mutex> subs_lock(_subs_mutex);
+    _connections.erase(con);
+    auto& idx = _subs.template get<connection_tag>();
     auto r = idx.equal_range(con);
     idx.erase(r.first, r.second);
-}
-
-template <typename Server>
-inline void broker<Server>::worker() {
-    _server->listen();
-    _ioc.run();
 }
 
 template <typename Server>
@@ -69,6 +64,12 @@ inline void broker<Server>::share(mqtt_cpp::buffer topic_name, mqtt_cpp::buffer 
     message_ptr shared_message =
         std::make_shared<message>(std::move(payload), topic, std::uint8_t(pubopts));
     _global_queue.push(_adapter_settings, shared_message);
+}
+
+template <typename Server>
+inline void broker<Server>::worker() {
+    _server->listen();
+    _ioc.run();
 }
 
 template <typename Server>
@@ -127,6 +128,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             if (_connections.find(sp) != _connections.end()) {
                 std::string message =
                     boost_error_to_string(ec.value()) + " at " + _meta[sp].address.to_string();
+                if (not _meta[sp].client_id.empty()) message += " (" + _meta[sp].client_id + ").";
                 log::print(log_type::error, _adapter_settings->name() + ": " + message);
                 this->close_connection(sp);
             }
@@ -214,20 +216,20 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             auto const& idx = this->_subs.template get<topic_tag>();
-            auto r = idx.equal_range(topic_name);
-            for (; r.first != r.second; ++r.first) {
-                r.first->con->publish(topic_name, contents,
-                                      std::min(r.first->qos_value, pubopts.get_qos()));
-                auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
-                address remote_address(llre.address().to_string(), llre.port());
-                log::print_event(
-                    _adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
-                    network_event_type::send,
-                    OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+            for (auto& sub : idx) {
+                if (scope::matches_filter(sub.topic_filter, topic_name)) {
+                    sub.con->publish(topic_name, contents,
+                                     std::min(sub.qos_value, pubopts.get_qos()));
+                    auto llre = sub.con->socket().lowest_layer().remote_endpoint();
+                    address remote_address(llre.address().to_string(), llre.port());
+                    log::print_event(
+                        _adapter_settings->name(), remote_address, _meta[sub.con].client_id,
+                        network_event_type::send,
+                        OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+                }
             }
             _subs_lock.unlock();
             this->share(topic_name, contents, pubopts);
-            ++(this->_meta[sp].n_publishes);
             return true;
         });
 
@@ -242,11 +244,14 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 std::vector<mqtt_cpp::suback_return_code> res;
                 res.reserve(entries.size());
                 for (auto const& e : entries) {
-                    mqtt_cpp::buffer topic = std::get<0>(e);
+                    mqtt_cpp::buffer topic_filter = std::get<0>(e);
                     mqtt_cpp::qos qos_value = std::get<1>(e).get_qos();
-                    res.emplace_back(mqtt_cpp::qos_to_suback_return_code(qos_value));
-                    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
-                    this->_subs.emplace(std::move(topic), sp, qos_value);
+                    if (scope::valid_topic_filter(topic_filter)) {
+                        res.emplace_back(mqtt_cpp::qos_to_suback_return_code(qos_value));
+                        std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
+                        this->_subs.emplace(std::move(topic_filter), sp, qos_value);
+                    } else
+                        res.emplace_back(mqtt_cpp::suback_return_code::failure);
                 }
                 sp->suback(packet_id, res);
                 log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
@@ -352,24 +357,23 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             auto const& idx = this->_subs.template get<topic_tag>();
-            auto r = idx.equal_range(topic_name);
-            for (; r.first != r.second; ++r.first) {
-                mqtt_cpp::retain retain = (r.first->rap_value == mqtt_cpp::rap::retain)
-                                              ? pubopts.get_retain()
-                                              : mqtt_cpp::retain::no;
-                r.first->con->publish(topic_name, contents,
-                                      std::min(r.first->qos_value, pubopts.get_qos()) | retain,
-                                      std::move(props));
-                auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
-                address remote_address(llre.address().to_string(), llre.port());
-                log::print_event(
-                    _adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
-                    network_event_type::send,
-                    OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+            for (auto& sub : idx) {
+                if (scope::matches_filter(sub.topic_filter, topic_name)) {
+                    mqtt_cpp::retain retain = (sub.rap_value == mqtt_cpp::rap::retain)
+                                                  ? pubopts.get_retain()
+                                                  : mqtt_cpp::retain::no;
+                    sub.con->publish(topic_name, contents,
+                                     std::min(sub.qos_value, pubopts.get_qos()) | retain, props);
+                    auto llre = sub.con->socket().lowest_layer().remote_endpoint();
+                    address remote_address(llre.address().to_string(), llre.port());
+                    log::print_event(
+                        _adapter_settings->name(), remote_address, _meta[sub.con].client_id,
+                        network_event_type::send,
+                        OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+                }
             }
             _subs_lock.unlock();
             this->share(topic_name, contents, pubopts);
-            ++(this->_meta[sp].n_publishes);
             return true;
         });
 
@@ -385,12 +389,15 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 std::vector<mqtt_cpp::v5::suback_reason_code> res;
                 res.reserve(entries.size());
                 for (auto const& e : entries) {
-                    mqtt_cpp::buffer topic = std::get<0>(e);
-                    mqtt_cpp::qos qos_value = std::get<1>(e).get_qos();
-                    mqtt_cpp::rap rap_value = std::get<1>(e).get_rap();
-                    res.emplace_back(mqtt_cpp::v5::qos_to_suback_reason_code(qos_value));
-                    std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
-                    this->_subs.emplace(std::move(topic), sp, qos_value, rap_value);
+                    mqtt_cpp::buffer topic_filter = std::get<0>(e);
+                    if (scope::valid_topic_filter(topic_filter)) {
+                        mqtt_cpp::qos qos_value = std::get<1>(e).get_qos();
+                        mqtt_cpp::rap rap_value = std::get<1>(e).get_rap();
+                        res.emplace_back(mqtt_cpp::v5::qos_to_suback_reason_code(qos_value));
+                        std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
+                        this->_subs.emplace(std::move(topic_filter), sp, qos_value, rap_value);
+                    } else
+                        res.emplace_back(mqtt_cpp::v5::suback_reason_code::topic_filter_invalid);
                 }
                 sp->suback(packet_id, res);
                 log::print_event(_adapter_settings->name(), _meta[sp].address, _meta[sp].client_id,
@@ -438,16 +445,17 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message) {
     mqtt_cpp::publish_options pubopts(message->pubopts());
 
     std::lock_guard<std::mutex> _subs_lock(_subs_mutex);
-    auto const& idx = _subs.template get<topic_tag>();
-    auto r = idx.equal_range(topic_name);
-    for (; r.first != r.second; ++r.first) {
-        r.first->con->publish(topic_name, contents,
-                              std::min(r.first->qos_value, pubopts.get_qos()));
-        auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
-        address remote_address(llre.address().to_string(), llre.port());
-        log::print_event(_adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
-                         network_event_type::send,
-                         OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+    auto const& idx = this->_subs.template get<topic_tag>();
+    for (auto& sub : idx) {
+        if (scope::matches_filter(sub.topic_filter, topic_name)) {
+            sub.con->publish(topic_name, contents, std::min(sub.qos_value, pubopts.get_qos()));
+            auto llre = sub.con->socket().lowest_layer().remote_endpoint();
+            address remote_address(llre.address().to_string(), llre.port());
+            log::print_event(
+                _adapter_settings->name(), remote_address, _meta[sub.con].client_id,
+                network_event_type::send,
+                OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+        }
     }
 }
 
@@ -460,19 +468,21 @@ void broker<Server>::inject_publish(const std::shared_ptr<message> message,
     mqtt_cpp::publish_options pubopts(message->pubopts());
 
     std::lock_guard<std::mutex> _subs_lock(_subs_mutex);
-    auto const& idx = _subs.template get<topic_tag>();
-    auto r = idx.equal_range(topic_name);
-    for (; r.first != r.second; ++r.first) {
-        mqtt_cpp::retain retain = (r.first->rap_value == mqtt_cpp::rap::retain)
-                                      ? pubopts.get_retain()
-                                      : mqtt_cpp::retain::no;
-        r.first->con->publish(topic_name, contents,
-                              std::min(r.first->qos_value, pubopts.get_qos()) | retain, props);
-        auto llre = r.first->con->socket().lowest_layer().remote_endpoint();
-        address remote_address(llre.address().to_string(), llre.port());
-        log::print_event(_adapter_settings->name(), remote_address, _meta[r.first->con].client_id,
-                         network_event_type::send,
-                         OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+    auto const& idx = this->_subs.template get<topic_tag>();
+    for (auto& sub : idx) {
+        if (scope::matches_filter(sub.topic_filter, topic_name)) {
+            mqtt_cpp::retain retain = (sub.rap_value == mqtt_cpp::rap::retain)
+                                          ? pubopts.get_retain()
+                                          : mqtt_cpp::retain::no;
+            sub.con->publish(topic_name, contents,
+                             std::min(sub.qos_value, pubopts.get_qos()) | retain, props);
+            auto llre = sub.con->socket().lowest_layer().remote_endpoint();
+            address remote_address(llre.address().to_string(), llre.port());
+            log::print_event(
+                _adapter_settings->name(), remote_address, _meta[sub.con].client_id,
+                network_event_type::send,
+                OCTOMQ_MQTT_PUBLISH_S " (" + log::size_to_string(contents.size()) + ')');
+        }
     }
 }
 

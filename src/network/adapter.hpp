@@ -45,6 +45,7 @@ class adapter_settings {
     port_int _port;
     protocol_type _protocol;
     string _protocol_name;
+    scope _scope;
     string _name;
     bool _generated_name;
 
@@ -54,21 +55,23 @@ class adapter_settings {
     void phy(const class phy &phy);
     void phy(const string &phy);
     void port(const port_int &port);
+    void scope(const class scope &scope);
     void name(const string &name);
     void name_append(const string &appendix);  // Only works with generated names
 
     const class phy &phy() const;
     const port_int &port() const;
     const protocol_type &protocol() const;
+    const string &protocol_name() const;
+    const class scope &scope() const;
     const string &name() const;
-    const nlohmann::json &json() const;
 
     bool compare_binding(const ip_int ip, const port_int port) const;
     const string binging_name() const;
-    const string &protocol_name() const;
 };
 
 using adapter_settings_ptr = std::shared_ptr<adapter_settings>;
+using adapter_settings_const_ptr = std::shared_ptr<const adapter_settings>;
 
 class message_queue;
 
@@ -85,6 +88,7 @@ class adapter_interface {
     virtual void run() = 0;
     virtual void stop() = 0;
     virtual void inject_publish(const message_ptr message) = 0;
+    adapter_settings_const_ptr settings() const;
 };
 
 using adapter_iface_ptr = std::shared_ptr<adapter_interface>;

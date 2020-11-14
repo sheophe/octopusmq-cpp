@@ -25,11 +25,11 @@ namespace multi_index = boost::multi_index;
 
 struct topic_tag {};
 struct connection_tag {};
+struct topic_connection_tag {};
 
 struct metadata {
     address address;
     std::string client_id;
-    uint64_t n_publishes;
     mqtt::version protocol_version;
 };
 
@@ -55,33 +55,42 @@ class broker final : public adapter_interface {
 
     class subscription {
        public:
-        mqtt_cpp::buffer topic;
+        mqtt_cpp::buffer topic_filter;
         connection_sp con;
         mqtt_cpp::qos qos_value;
         mqtt_cpp::rap rap_value;
 
-        subscription(mqtt_cpp::buffer topic, connection_sp con, mqtt_cpp::qos qos_value)
-            : topic(std::move(topic)),
+        subscription(mqtt_cpp::buffer topic_filter, connection_sp con, mqtt_cpp::qos qos_value)
+            : topic_filter(std::move(topic_filter)),
               con(std::move(con)),
               qos_value(qos_value),
               rap_value(mqtt_cpp::rap::dont) {}  // MQTT v3 constructor
 
-        subscription(mqtt_cpp::buffer topic, connection_sp con, mqtt_cpp::qos qos_value,
+        subscription(mqtt_cpp::buffer topic_filter, connection_sp con, mqtt_cpp::qos qos_value,
                      mqtt_cpp::rap rap_value)
-            : topic(std::move(topic)),
+            : topic_filter(std::move(topic_filter)),
               con(std::move(con)),
               qos_value(qos_value),
               rap_value(rap_value) {}  // MQTT v5 constructor
     };
 
     using subscription_container = multi_index::multi_index_container<
-        subscription, multi_index::indexed_by<
-                          multi_index::ordered_non_unique<  // Topic index
-                              multi_index::tag<topic_tag>,
-                              BOOST_MULTI_INDEX_MEMBER(subscription, mqtt_cpp::buffer, topic)>,
-                          multi_index::ordered_non_unique<  // Connection index
-                              multi_index::tag<connection_tag>,
-                              BOOST_MULTI_INDEX_MEMBER(subscription, connection_sp, con)>>>;
+        subscription,
+        multi_index::indexed_by<
+            multi_index::ordered_non_unique<  // Topic index
+                multi_index::tag<topic_tag>,
+                BOOST_MULTI_INDEX_MEMBER(subscription, mqtt_cpp::buffer, topic_filter)>,
+            multi_index::ordered_non_unique<  // Connection index
+                multi_index::tag<connection_tag>,
+                BOOST_MULTI_INDEX_MEMBER(subscription, connection_sp, con)>,
+            // Don't allow the same connection object to have the same topic multiple times.
+            // Note that this index does not get used by any code in the broker
+            // other than to enforce the uniqueness constraints.
+            multi_index::ordered_unique<
+                multi_index::tag<topic_connection_tag>,
+                multi_index::composite_key<
+                    subscription, BOOST_MULTI_INDEX_MEMBER(subscription, connection_sp, con),
+                    BOOST_MULTI_INDEX_MEMBER(subscription, mqtt_cpp::buffer, topic_filter)>>>>;
 
    private:
     boost::asio::io_context _ioc;

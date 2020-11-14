@@ -76,6 +76,12 @@ class invalid_invocation : public std::runtime_error {
         : std::runtime_error("invalid invocation of function '" + fname + "'.") {}
 };
 
+class invalid_topic_filter : public std::runtime_error {
+   public:
+    explicit invalid_topic_filter(const std::string &topic)
+        : std::runtime_error("invalid topic filter '" + topic + "'.") {}
+};
+
 }  // namespace octopus_mq
 
 #endif

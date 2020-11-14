@@ -34,6 +34,18 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
     else
         throw field_type_error(OCTOMQ_ADAPTER_FIELD_PORT);
 
+    // Parsing scope
+    if (not json.contains(OCTOMQ_ADAPTER_FIELD_SCOPE))
+        throw missing_field_error(OCTOMQ_ADAPTER_FIELD_SCOPE);
+
+    const nlohmann::json &scope_field = json[OCTOMQ_ADAPTER_FIELD_SCOPE];
+    if (scope_field.is_string())
+        _scope = octopus_mq::scope(scope_field.get<string>());
+    else if (scope_field.is_array())
+        _scope = octopus_mq::scope(scope_field.get<std::vector<string>>());
+    else
+        throw field_type_error(OCTOMQ_ADAPTER_FIELD_SCOPE);
+
     // Parsing optional 'name' field
     // Derived classes may additionally set the name
     if (json.contains(OCTOMQ_ADAPTER_FIELD_NAME)) {
@@ -54,6 +66,8 @@ void adapter_settings::phy(const string &phy) { _phy = octopus_mq::phy(phy); }
 
 void adapter_settings::port(const port_int &port) { _port = port; }
 
+void adapter_settings::scope(const class scope &scope) { _scope = scope; }
+
 void adapter_settings::name(const string &name) { _name = name; }
 
 void adapter_settings::name_append(const string &appendix) {
@@ -66,9 +80,11 @@ const port_int &adapter_settings::port() const { return _port; }
 
 const protocol_type &adapter_settings::protocol() const { return _protocol; }
 
-const string &adapter_settings::name() const { return _name; }
-
 const string &adapter_settings::protocol_name() const { return _protocol_name; }
+
+const class scope &adapter_settings::scope() const { return _scope; }
+
+const string &adapter_settings::name() const { return _name; }
 
 bool adapter_settings::compare_binding(const ip_int ip, const port_int port) const {
     const ip_int phy_ip = _phy.ip();
@@ -84,6 +100,8 @@ const string adapter_settings::binging_name() const {
 adapter_interface::adapter_interface(const adapter_settings_ptr adapter_settings,
                                      message_queue &global_queue)
     : _adapter_settings(adapter_settings), _global_queue(global_queue) {}
+
+adapter_settings_const_ptr adapter_interface::settings() const { return _adapter_settings; }
 
 void message_queue::push(const adapter_settings_ptr adapter, const message_ptr message) {
     std::unique_lock<std::mutex> queue_lock(_queue_mutex);
@@ -110,9 +128,11 @@ size_t message_queue::wait_and_pop_all(std::chrono::milliseconds timeout, adapte
         popped = _queue.size();
         while (not _queue.empty()) {
             adapter_message_pair item = _queue.front();
-            _queue.pop();
             for (auto &adapter : pool)
-                if (adapter.first != item.first) adapter.second->inject_publish(item.second);
+                if (adapter.first != item.first and
+                    adapter.second->settings()->scope().includes(item.second->topic()))
+                    adapter.second->inject_publish(item.second);
+            _queue.pop();
         }
     }
     return popped;
