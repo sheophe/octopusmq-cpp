@@ -28,9 +28,11 @@ class adapter_settings : public octopus_mq::adapter_settings {
 
     static inline const std::map<string, transport_type> _transport_from_name = {
         { OCTOMQ_ADAPTER_TRANSPORT_TCP, transport_type::tcp },
-        { OCTOMQ_ADAPTER_TRANSPORT_TLS, transport_type::tls },
         { OCTOMQ_ADAPTER_TRANSPORT_WS, transport_type::websocket },
+#ifdef OCTOMQ_ENABLE_TLS
+        { OCTOMQ_ADAPTER_TRANSPORT_TLS, transport_type::tls },
         { OCTOMQ_ADAPTER_TRANSPORT_TLSWS, transport_type::tls_websocket }
+#endif
     };
 
    public:
