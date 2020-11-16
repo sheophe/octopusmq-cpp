@@ -10,7 +10,7 @@ Each octopusMQ instance has a single message queue and could have multiple conne
 Building
 --------
 
-CMake and Boost library is required to build this project
+CMake and Boost library are required to build this project.
 
 On Debian GNU/Linux:
 ```
