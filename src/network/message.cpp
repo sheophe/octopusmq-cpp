@@ -9,8 +9,13 @@ message::message(message_payload &&payload) : _payload(move(payload)) {}
 message::message(message_payload &&payload, const string &origin_client_id)
     : _payload(move(payload)), _origin_client_id(origin_client_id), _origin_pubopts(0) {}
 
-message::message(message_payload &&payload, const string &topic, const uint8_t pubopts)
-    : _payload(move(payload)), _topic(topic), _origin_pubopts(pubopts) {}
+message::message(message_payload &&payload, const string &topic, const uint8_t pubopts,
+                 const mqtt::version &version, const mqtt_cpp::v5::properties &props)
+    : _payload(move(payload)),
+      _topic(topic),
+      _mqtt_version(version),
+      _origin_pubopts(pubopts),
+      _origin_props(props) {}
 
 message::message(message_payload &&payload, const uint8_t pubopts)
     : _payload(move(payload)), _origin_pubopts(pubopts) {}
@@ -25,6 +30,8 @@ void message::origin(const string &origin_client_id) { _origin_client_id = origi
 
 void message::pubopts(const uint8_t pubopts) { _origin_pubopts = pubopts; }
 
+void message::props(const mqtt_cpp::v5::properties &props) { _origin_props = props; }
+
 void message::mqtt_version(const mqtt::version version) { _mqtt_version = version; }
 
 const message_payload &message::payload() const { return _payload; }
@@ -34,6 +41,8 @@ const string &message::topic() const { return _topic; }
 const string &message::origin() const { return _origin_client_id; }
 
 const uint8_t &message::pubopts() const { return _origin_pubopts; }
+
+const mqtt_cpp::v5::properties &message::props() const { return _origin_props; }
 
 const mqtt::version &message::mqtt_version() const { return _mqtt_version; }
 

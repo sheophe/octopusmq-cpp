@@ -105,8 +105,10 @@ class broker final : public adapter_interface {
     inline void close_connection(connection_sp const& con);
     inline void worker();
 
-    inline void share(mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents,
-                      mqtt_cpp::publish_options pubopts);
+    inline void share(const mqtt_cpp::buffer& topic_name, const mqtt_cpp::buffer& contents,
+                      const mqtt_cpp::publish_options& pubopts,
+                      const mqtt::version version = mqtt::version::v3,
+                      const mqtt_cpp::v5::properties& props = mqtt_cpp::v5::properties());
 
    public:
     broker(const octopus_mq::adapter_settings_ptr adapter_settings, message_queue& global_queue);
@@ -115,7 +117,6 @@ class broker final : public adapter_interface {
     void stop();
 
     void inject_publish(const message_ptr message);
-    void inject_publish(const message_ptr message, mqtt_cpp::v5::properties props);
 };
 
 }  // namespace octopus_mq::mqtt
