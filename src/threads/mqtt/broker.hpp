@@ -9,6 +9,7 @@
 
 #include "mqtt_server_cpp.hpp"
 
+#include <memory>
 #include <mutex>
 #include <set>
 #include <thread>

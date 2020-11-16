@@ -2,6 +2,7 @@
 #define OCTOMQ_ERRORS_H_
 
 #include <string>
+#include <stdexcept>
 
 namespace octopus_mq {
 

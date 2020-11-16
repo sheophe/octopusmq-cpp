@@ -1,6 +1,7 @@
 #ifndef OCTOMQ_MESSAGE_H_
 #define OCTOMQ_MESSAGE_H_
 
+#include <memory>
 #include <string>
 #include <vector>
 

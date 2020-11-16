@@ -11,8 +11,8 @@
         {
             "interface": "lo0",
             "protocol": "mqtt",
-            "transport": "tcp",
-            "port": 1884,
+            "transport": "websocket",
+            "port": 9001,
             "role": "broker",
             "scope": "#"
         }

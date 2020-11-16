@@ -9,7 +9,7 @@ option(OCTOMQ_ENABLE_DDS "Enable DDS support (OpenDDS patched for C++17 is requi
 option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" OFF)
 option(OCTOMQ_USE_STATIC_LIBS "Use static linkage to Boost libraries" OFF)
 
-find_package(Boost 1.66.0 REQUIRED COMPONENTS system REQUIRED)
+find_package(Boost 1.66.0 REQUIRED)
 find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
 
 if(OCTOMQ_ENABLE_DDS)
@@ -88,7 +88,7 @@ add_executable(${PROJECT_NAME} ${SRC_LIST})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${BOOST_ASIO_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
 if (UNIX AND NOT APPLE)
-    target_link_libraries(${PROJECT_NAME} stdc++fs)
+    target_link_libraries(${PROJECT_NAME} PUBLIC stdc++fs)
 endif()
 
 if(OCTOMQ_ENABLE_DDS)

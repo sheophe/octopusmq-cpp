@@ -84,12 +84,13 @@ void control::initialize_adapters() {
         } catch (const std::runtime_error &re) {
             log::print(log_type::fatal, "adapter '" + adapter.first->name() + "': " + re.what());
             _should_stop = true;
-            break;
+            _initialized = false;
+            return;
         }
     }
     // Running adapters only after initialization was successful
     for (auto &adapter : _adapter_pool) adapter.second->run();
-    _initialized = not _should_stop;
+    _initialized = true;
 }
 
 void control::shutdown_adapters() {
