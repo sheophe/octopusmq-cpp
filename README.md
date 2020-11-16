@@ -21,3 +21,8 @@ Then build the project using build script:
 ```
 ./build.sh --clean --static --optimize --no-dds
 ```
+
+To run using octopusmq.json as configuration file:
+```
+./build/octopusmq ./octopusmq.json
+```
