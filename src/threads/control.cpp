@@ -12,57 +12,7 @@
 #include "core/settings.hpp"
 #include "network/adapter_factory.hpp"
 
-#define OCTOMQ_DEFAULT_CONTROL_PORT (18888)
-#define OCTOMQ_DEFAULT_CONTROL_TOPIC "$SYS/config/octopusmq"
-
 namespace octopus_mq {
-
-control_settings::control_settings()
-    : _phy(),
-      _proto(protocol_type::mqtt),
-      _transport(transport_type::tcp),
-      _port(OCTOMQ_DEFAULT_CONTROL_PORT),
-      _root_topic(OCTOMQ_DEFAULT_CONTROL_TOPIC) {}
-
-void control_settings::phy(const class phy &phy) { _phy = phy; }
-
-void control_settings::phy(class phy &&phy) { _phy = std::move(phy); }
-
-void control_settings::phy(const string &phy) { _phy = octopus_mq::phy(phy); }
-
-void control_settings::protocol(const protocol_type &proto) { _proto = proto; }
-
-void control_settings::protocol(const string &proto) {
-    if (auto iter = _ctrl_proto_map.find(proto); iter != _ctrl_proto_map.end())
-        _proto = iter->second;
-    else
-        throw std::runtime_error("unknwon protocol: " + proto);
-}
-
-void control_settings::transport(const transport_type &transport) { _transport = transport; }
-
-void control_settings::transport(const string &transport) {
-    if (auto iter = _ctrl_transport_map.find(transport); iter != _ctrl_transport_map.end())
-        _transport = iter->second;
-    else
-        throw std::runtime_error("unknwon transport: " + transport);
-}
-
-void control_settings::port(const port_int &port) { _port = port; }
-
-void control_settings::root(const string &root) { _root_topic = root; }
-
-void control_settings::root(string &&root) { _root_topic = std::move(root); }
-
-const class phy &control_settings::phy() const { return _phy; }
-
-const protocol_type &control_settings::protocol() const { return _proto; }
-
-const transport_type &control_settings::transport() const { return _transport; }
-
-const port_int &control_settings::port() const { return _port; }
-
-const string &control_settings::root() const { return _root_topic; }
 
 void control::arg_help() {
     log::print_help();
