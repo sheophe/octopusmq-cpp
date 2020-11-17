@@ -6,8 +6,6 @@ namespace octopus_mq {
 
 using std::string;
 
-static const string unknwon_protocol = "(unknown)";
-
 adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann::json &json)
     : _phy(), _port(network::constants::null_port), _protocol(protocol), _generated_name(false) {
     // Parsing protocol name
