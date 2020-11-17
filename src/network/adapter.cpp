@@ -17,9 +17,13 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
         throw missing_field_error(adapter::field_name::interface);
 
     const nlohmann::json &interface_field = json[adapter::field_name::interface];
-    if (interface_field.is_string())
-        _phy = octopus_mq::phy(interface_field.get<string>());
-    else
+    if (interface_field.is_string()) {
+        std::string interface_name = interface_field.get<string>();
+        if (_protocol_name == network::protocol_name::bridge &&
+            interface_name == network::constants::any_interface)
+            throw invalid_bridge_interface();
+        _phy = octopus_mq::phy(interface_name);
+    } else
         throw field_type_error(adapter::field_name::interface);
 
     // Parsing port

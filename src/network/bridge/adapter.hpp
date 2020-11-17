@@ -1,0 +1,95 @@
+#ifndef OCTOMQ_BRIDGE_ADAPTER_H_
+#define OCTOMQ_BRIDGE_ADAPTER_H_
+
+#include <chrono>
+#include <map>
+#include <memory>
+#include <string>
+#include <variant>
+#include <vector>
+
+#include "network/adapter.hpp"
+#include "network/network.hpp"
+
+namespace octopus_mq::bridge {
+
+using namespace std::chrono_literals;
+
+namespace adapter {
+
+    namespace field_name {
+
+        constexpr char discovery[] = "discovery";
+        constexpr char mode[] = "mode";
+        constexpr char from[] = "from";
+        constexpr char to[] = "to";
+        constexpr char endpoints[] = "endpoints";
+        constexpr char timeouts[] = "timeouts";
+        constexpr char acknowledge[] = "acknowledge";
+        constexpr char heartbeat[] = "heartbeat";
+
+    }  // namespace field_name
+
+    namespace default_timeouts {
+
+        constexpr std::chrono::milliseconds discovery = 10000ms;
+        constexpr std::chrono::milliseconds acknowledge = 1000ms;
+        constexpr std::chrono::milliseconds heartbeat = 60000ms;
+
+    }  // namespace default_timeouts
+
+}  // namespace adapter
+
+using std::string;
+
+enum class discovery_endpoints_format { list, range };
+
+using discovery_list = std::vector<ip_int>;
+
+class discovery_range {
+   public:
+    discovery_range();
+
+    ip_int from;
+    ip_int to;
+};
+
+using discovery_endpoints = std::variant<discovery_list, discovery_range>;
+
+class discovery_settings {
+   public:
+    transport_mode mode;
+    discovery_endpoints_format format;
+    discovery_endpoints endpoints;
+};
+
+class timeouts {
+   public:
+    std::chrono::milliseconds discovery;
+    std::chrono::milliseconds acknowledge;
+    std::chrono::milliseconds heartbeat;
+};
+
+class adapter_settings : public octopus_mq::adapter_settings {
+    discovery_settings _discovery_settings;
+    timeouts _timeouts;
+
+   public:
+    adapter_settings(const nlohmann::json& json);
+
+    // This call will pass discovery settings for unicast and set the mode.
+    // Default discovery mode is broadcast.
+    void discovery(const discovery_endpoints_format& format, const discovery_endpoints& endpoints);
+    void timeouts(const std::chrono::milliseconds& discovery,
+                  const std::chrono::milliseconds& acknowledge,
+                  const std::chrono::milliseconds& heartbeat);
+
+    const discovery_settings& discovery() const;
+    const bridge::timeouts& timeouts() const;
+};
+
+using adapter_settings_ptr = std::shared_ptr<bridge::adapter_settings>;
+
+}  // namespace octopus_mq::bridge
+
+#endif

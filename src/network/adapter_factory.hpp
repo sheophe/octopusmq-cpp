@@ -11,6 +11,7 @@
 #include "network/network.hpp"
 
 #include "network/mqtt/adapter.hpp"
+#include "network/bridge/adapter.hpp"
 #ifdef OCTOMQ_ENABLE_DDS
 #include "network/dds/adapter.hpp"
 #endif

@@ -9,7 +9,7 @@ namespace octopus_mq {
 
 using std::string;
 
-enum class protocol_type { mqtt, dds };
+enum class protocol_type { bridge, dds, mqtt };
 
 enum class transport_mode { unicast, multicast, broadcast };
 
@@ -31,6 +31,8 @@ namespace network {
 
         constexpr ip_int null_ip = 0;
         constexpr ip_int loopback_ip = 0x0100007f;  // 127.0.0.1 in reverse byte order
+        constexpr ip_int extract_subnets = 0x00ffffff;
+        constexpr ip_int extract_msb = 0xff000000;
         constexpr port_int null_port = 0;
         constexpr port_int max_port = 65535;
         constexpr socket_int null_socket = -1;
@@ -58,8 +60,9 @@ namespace network {
 
     namespace protocol_name {
 
-        constexpr char mqtt[] = "mqtt";
+        constexpr char bridge[] = "bridge";
         constexpr char dds[] = "dds";
+        constexpr char mqtt[] = "mqtt";
 
     }  // namespace protocol_name
 

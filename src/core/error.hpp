@@ -18,6 +18,9 @@ class field_type_error : public std::runtime_error {
    public:
     explicit field_type_error(const std::string &what_arg)
         : std::runtime_error("field '" + what_arg + "' has a wrong type.") {}
+
+    explicit field_type_error(const std::string &field, const std::string &subfield)
+        : std::runtime_error("field '" + field + '.' + subfield + "' has a wrong type.") {}
 };
 
 class field_range_error : public std::range_error {
@@ -35,7 +38,11 @@ class field_encapsulated_error : public std::runtime_error {
 class missing_field_error : public std::runtime_error {
    public:
     explicit missing_field_error(const std::string &field_name)
-        : std::runtime_error("filed '" + field_name + "' is missing from settings.") {}
+        : std::runtime_error("field '" + field_name + "' is missing from settings.") {}
+
+    explicit missing_field_error(const std::string &field_name, const std::string &subfield_name)
+        : std::runtime_error("field '" + field_name + '.' + subfield_name +
+                             "' is missing from settings.") {}
 };
 
 class unknown_protocol_error : public std::runtime_error {
@@ -81,6 +88,42 @@ class invalid_topic_filter : public std::runtime_error {
    public:
     explicit invalid_topic_filter(const std::string &topic)
         : std::runtime_error("invalid topic filter '" + topic + "'.") {}
+};
+
+class invalid_bridge_interface : public std::runtime_error {
+   public:
+    explicit invalid_bridge_interface()
+        : std::runtime_error("bridge adapter: cannot use wildcard interface name.") {}
+};
+
+class invalid_bridge_discovery_mode : public std::runtime_error {
+   public:
+    explicit invalid_bridge_discovery_mode(const std::string &mode)
+        : std::runtime_error("bridge adapter: transport mode '" + mode + "' is not supported.") {}
+};
+
+class invalid_bridge_endpoint : public std::runtime_error {
+   public:
+    explicit invalid_bridge_endpoint(const std::string &endpoint)
+        : std::runtime_error("bridge adapter: invalid discovery endpoint '" + endpoint + "'.") {}
+};
+
+class invalid_bridge_range : public std::runtime_error {
+   public:
+    explicit invalid_bridge_range()
+        : std::runtime_error("bridge adapter: invalid address range.") {}
+};
+
+class bridge_range_different_subnets : public std::runtime_error {
+   public:
+    explicit bridge_range_different_subnets()
+        : std::runtime_error("bridge adapter: cannot use address range from different subnets.") {}
+};
+
+class bridge_discovery_not_set : public std::runtime_error {
+   public:
+    explicit bridge_discovery_not_set()
+        : std::runtime_error("bridge adapter: discovery endpoints are not defined.") {}
 };
 
 }  // namespace octopus_mq

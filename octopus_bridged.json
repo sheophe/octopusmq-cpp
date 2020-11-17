@@ -5,7 +5,6 @@
             "protocol": "mqtt",
             "transport": "tcp",
             "port": 1883,
-            "role": "broker",
             "scope": "#"
         },
         {
@@ -13,15 +12,16 @@
             "protocol": "mqtt",
             "transport": "websocket",
             "port": 19001,
-            "role": "broker",
             "scope": "#"
         },
         {
             "interface": "lo0",
             "protocol": "bridge",
-            "search": {
-                "from": "*.*.*.1",
-                "to": "*.*.*.10"
+            "port": 60777,
+            "discovery": {
+                "mode": "unicast",
+                "from": "127.0.0.1",
+                "to": "127.0.0.1"
             },
             "timeouts": {
                 "discovery": 1000,
