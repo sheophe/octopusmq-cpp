@@ -17,12 +17,11 @@
 
 #define OCTOMQ_MAX_PORT_STRLEN (6)
 #define OCTOMQ_MAX_HOSTNAME_LEN (256)
-#define OCTOMQ_IFACE_NAME_ANY ("*")
 #define OCTOMQ_RECV_BUFFER_SIZE (65536)
 
 namespace octopus_mq {
 
-address::address() : _ip(OCTOMQ_NULL_IP), _port(OCTOMQ_NULL_PORT) {}
+address::address() : _ip(network::constants::null_ip), _port(network::constants::null_port) {}
 
 address::address(const ip_int &ip, const port_int &port) : _ip(ip), _port(port) {}
 
@@ -35,7 +34,7 @@ ip_int address::to_ip(const string &ip_string) {
     if (inet_pton(AF_INET, ip_string.c_str(), &ia))
         return (ip_int)ia.s_addr;
     else
-        return OCTOMQ_NULL_IP;
+        return network::constants::null_ip;
 }
 
 void address::address_string(const string &address_string) {
@@ -43,13 +42,13 @@ void address::address_string(const string &address_string) {
     if (pos != string::npos) {
         string ip = address_string.substr(0, pos);
         string port = address_string.substr(pos + 1);
-        _ip = ip.empty() ? OCTOMQ_NULL_IP : to_ip(ip);
-        _port = port.empty() ? OCTOMQ_NULL_PORT : stoi(port);
+        _ip = ip.empty() ? network::constants::null_ip : to_ip(ip);
+        _port = port.empty() ? network::constants::null_port : stoi(port);
     } else if (address_string.size() >= sizeof("0.0.0.0")) {
         _ip = to_ip(address_string);
-        _port = OCTOMQ_NULL_PORT;
+        _port = network::constants::null_port;
     } else if (address_string.size() <= sizeof("65535")) {
-        _ip = OCTOMQ_NULL_IP;
+        _ip = network::constants::null_ip;
         _port = stoi(address_string);
     }
 }
@@ -77,21 +76,25 @@ const port_int &address::port() const { return _port; }
 
 const ip_int &address::ip() const { return _ip; }
 
-bool address::empty() const { return (_ip == OCTOMQ_NULL_IP) and (_port == OCTOMQ_NULL_PORT); }
+bool address::empty() const {
+    return (_ip == network::constants::null_ip) and (_port == network::constants::null_port);
+}
 
-phy::phy() : _ip(OCTOMQ_NULL_IP), _name(OCTOMQ_IFACE_NAME_ANY) {}
+phy::phy() : _ip(network::constants::null_ip), _name(network::constants::any_interface) {}
 
-phy::phy(const string &name) : _ip(OCTOMQ_NULL_IP), _name(name) {
-    if (_name != OCTOMQ_IFACE_NAME_ANY) {
+phy::phy(const string &name) : _ip(network::constants::null_ip), _name(name) {
+    if (_name != network::constants::any_interface) {
         phy_addresses();
-        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+        if (_ip == network::constants::null_ip)
+            throw std::runtime_error("interface not found: " + _name);
     }
 }
 
-phy::phy(string &&name) : _ip(OCTOMQ_NULL_IP), _name(std::move(name)) {
-    if (_name != OCTOMQ_IFACE_NAME_ANY) {
+phy::phy(string &&name) : _ip(network::constants::null_ip), _name(std::move(name)) {
+    if (_name != network::constants::any_interface) {
         phy_addresses();
-        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+        if (_ip == network::constants::null_ip)
+            throw std::runtime_error("interface not found: " + _name);
     }
 }
 
@@ -129,27 +132,29 @@ void phy::phy_addresses() {
 
 void phy::name(const string &name) {
     _name = name;
-    if (_name == OCTOMQ_IFACE_NAME_ANY) {
-        _ip = OCTOMQ_NULL_IP;
+    if (_name == network::constants::any_interface) {
+        _ip = network::constants::null_ip;
     } else {
         phy_addresses();
-        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+        if (_ip == network::constants::null_ip)
+            throw std::runtime_error("interface not found: " + _name);
     }
 }
 
 void phy::name(string &&name) {
     _name = std::move(name);
-    if (_name == OCTOMQ_IFACE_NAME_ANY) {
-        _ip = OCTOMQ_NULL_IP;
+    if (_name == network::constants::any_interface) {
+        _ip = network::constants::null_ip;
     } else {
         phy_addresses();
-        if (_ip == OCTOMQ_NULL_IP) throw std::runtime_error("interface not found: " + _name);
+        if (_ip == network::constants::null_ip)
+            throw std::runtime_error("interface not found: " + _name);
     }
 }
 
 void phy::ip(const ip_int &ip) {
     _ip = ip;
-    if (_ip != OCTOMQ_NULL_IP) {
+    if (_ip != network::constants::null_ip) {
         _name = phy_name();
         if (_name.empty()) throw std::runtime_error("interface not found: " + ip_string());
         phy_addresses();

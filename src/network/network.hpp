@@ -5,13 +5,6 @@
 #include <string>
 #include <vector>
 
-#define OCTOMQ_NULL_IP (0)
-#define OCTOMQ_NULL_PORT (0)
-#define OCTOMQ_PORT_MAX (65535)
-#define OCTOMQ_NULL_SOCKET (-1)
-#define OCTOMQ_SOCKET_MAXCONN (256)
-#define OCTOMQ_LOOPBACK_IP (0x0100007F)  // 127.0.0.1 in reverse byte order
-
 namespace octopus_mq {
 
 using std::string;
@@ -31,6 +24,21 @@ using ip_int = uint32_t;
 using socket_int = int32_t;
 
 using network_payload = std::vector<unsigned char>;
+
+namespace network {
+
+    namespace constants {
+
+        constexpr ip_int null_ip = 0;
+        constexpr ip_int loopback_ip = 0x0100007f;  // 127.0.0.1 in reverse byte order
+        constexpr port_int null_port = 0;
+        constexpr port_int max_port = 65535;
+        constexpr socket_int null_socket = -1;
+        constexpr char any_interface[] = "*";
+
+    }  // namespace constants
+
+}  // namespace network
 
 namespace mqtt {
 

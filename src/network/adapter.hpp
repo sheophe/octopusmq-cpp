@@ -14,25 +14,51 @@
 #include "network/message.hpp"
 #include "network/network.hpp"
 
-#define OCTOMQ_ADAPTER_FIELD_INTERFACE "interface"
-#define OCTOMQ_ADAPTER_FIELD_PROTOCOL "protocol"
-#define OCTOMQ_ADAPTER_FIELD_PORT "port"
-#define OCTOMQ_ADAPTER_FIELD_TRANSPORT "transport"
-#define OCTOMQ_ADAPTER_FIELD_SCOPE "scope"
-#define OCTOMQ_ADAPTER_FIELD_DOMAIN "domain"
-#define OCTOMQ_ADAPTER_FIELD_ROLE "role"
-#define OCTOMQ_ADAPTER_FIELD_QOS "qos"
-#define OCTOMQ_ADAPTER_FIELD_NAME "name"
-#define OCTOMQ_ADAPTER_FIELD_SECURITY "security"
-#define OCTOMQ_ADAPTER_FIELD_CERTIFICATE "certificate"
-
-#define OCTOMQ_ADAPTER_TRANSPORT_UDP "udp"
-#define OCTOMQ_ADAPTER_TRANSPORT_TCP "tcp"
-#define OCTOMQ_ADAPTER_TRANSPORT_TLS "tls"
-#define OCTOMQ_ADAPTER_TRANSPORT_WS "websocket"
-#define OCTOMQ_ADAPTER_TRANSPORT_TLSWS "tls-websocket"
-
 namespace octopus_mq {
+
+namespace adapter {
+
+    namespace field_name {
+
+        constexpr char interface[] = "interface";
+        constexpr char protocol[] = "protocol";
+        constexpr char port[] = "port";
+        constexpr char transport[] = "transport";
+        constexpr char scope[] = "scope";
+        constexpr char domain[] = "domain";
+        constexpr char role[] = "role";
+        constexpr char qos[] = "qos";
+        constexpr char name[] = "name";
+        constexpr char security[] = "security";
+        constexpr char certificate[] = "certificate";
+
+    }  // namespace field_name
+
+    namespace transport_name {
+
+        constexpr char udp[] = "udp";
+        constexpr char tcp[] = "tcp";
+        constexpr char tls[] = "tls";
+        constexpr char websocket[] = "websocket";
+        constexpr char tls_websocket[] = "tls/websocket";
+
+    }  // namespace transport_name
+
+    namespace protocol_name {
+
+        constexpr char mqtt[] = "mqtt";
+        constexpr char dds[] = "dds";
+
+    }  // namespace protocol_name
+
+    namespace role_name {
+
+        constexpr char broker[] = "broker";
+        constexpr char client[] = "client";
+
+    }  // namespace role_name
+
+}  // namespace adapter
 
 using std::string, std::shared_ptr;
 

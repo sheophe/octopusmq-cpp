@@ -6,23 +6,23 @@
 namespace octopus_mq::mqtt {
 
 static octopus_mq::adapter_settings_parser adapter_settings_parser = {
-    { OCTOMQ_ADAPTER_FIELD_TRANSPORT,
+    { adapter::field_name::transport,
       [](octopus_mq::adapter_settings *self, const adapter_settings_parser_item &item) {
           if (item->is_string()) {
               std::string transport_str = item->get<string>();
               static_cast<adapter_settings *>(self)->transport(transport_str);
               static_cast<adapter_settings *>(self)->name_append('(' + transport_str + ')');
           } else
-              throw field_type_error(OCTOMQ_ADAPTER_FIELD_TRANSPORT);
+              throw field_type_error(adapter::field_name::transport);
       } },
-    { OCTOMQ_ADAPTER_FIELD_ROLE,
+    { adapter::field_name::role,
       [](octopus_mq::adapter_settings *self, const adapter_settings_parser_item &item) {
           if (item->is_string()) {
               std::string role_str = item->get<string>();
               static_cast<adapter_settings *>(self)->role(role_str);
               static_cast<adapter_settings *>(self)->name_append(role_str);
           } else
-              throw field_type_error(OCTOMQ_ADAPTER_FIELD_ROLE);
+              throw field_type_error(adapter::field_name::role);
       } }
 };
 

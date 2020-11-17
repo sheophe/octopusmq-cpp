@@ -6,12 +6,12 @@
 namespace octopus_mq::dds {
 
 static octopus_mq::adapter_settings_parser adapter_settings_parser = {
-    { OCTOMQ_ADAPTER_FIELD_TRANSPORT,
+    { adapter::field_name::transport,
       [](octopus_mq::adapter_settings *self, const adapter_settings_parser_item &item) {
           if (item->is_string())
               static_cast<dds::adapter_settings *>(self)->transport(item->get<string>());
           else
-              throw field_type_error(OCTOMQ_ADAPTER_FIELD_TRANSPORT);
+              throw field_type_error(adapter::field_name::transport);
       } }
 };
 

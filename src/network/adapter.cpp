@@ -9,51 +9,51 @@ using std::string;
 static const string unknwon_protocol = "(unknown)";
 
 adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann::json &json)
-    : _phy(), _port(OCTOMQ_NULL_PORT), _protocol(protocol), _generated_name(false) {
+    : _phy(), _port(network::constants::null_port), _protocol(protocol), _generated_name(false) {
     // Parsing protocol name
     // It exists and is string. That was already checked by adapter_factory
-    _protocol_name = json[OCTOMQ_ADAPTER_FIELD_PROTOCOL].get<string>();
+    _protocol_name = json[adapter::field_name::protocol].get<string>();
 
     // Parsing interface
-    if (not json.contains(OCTOMQ_ADAPTER_FIELD_INTERFACE))
-        throw missing_field_error(OCTOMQ_ADAPTER_FIELD_INTERFACE);
+    if (not json.contains(adapter::field_name::interface))
+        throw missing_field_error(adapter::field_name::interface);
 
-    const nlohmann::json &interface_field = json[OCTOMQ_ADAPTER_FIELD_INTERFACE];
+    const nlohmann::json &interface_field = json[adapter::field_name::interface];
     if (interface_field.is_string())
         _phy = octopus_mq::phy(interface_field.get<string>());
     else
-        throw field_type_error(OCTOMQ_ADAPTER_FIELD_INTERFACE);
+        throw field_type_error(adapter::field_name::interface);
 
     // Parsing port
-    if (not json.contains(OCTOMQ_ADAPTER_FIELD_PORT))
-        throw missing_field_error(OCTOMQ_ADAPTER_FIELD_PORT);
+    if (not json.contains(adapter::field_name::port))
+        throw missing_field_error(adapter::field_name::port);
 
-    const nlohmann::json &port_field = json[OCTOMQ_ADAPTER_FIELD_PORT];
+    const nlohmann::json &port_field = json[adapter::field_name::port];
     if (port_field.is_number_unsigned())
         _port = port_field.get<port_int>();
     else
-        throw field_type_error(OCTOMQ_ADAPTER_FIELD_PORT);
+        throw field_type_error(adapter::field_name::port);
 
     // Parsing scope
-    if (not json.contains(OCTOMQ_ADAPTER_FIELD_SCOPE))
-        throw missing_field_error(OCTOMQ_ADAPTER_FIELD_SCOPE);
+    if (not json.contains(adapter::field_name::scope))
+        throw missing_field_error(adapter::field_name::scope);
 
-    const nlohmann::json &scope_field = json[OCTOMQ_ADAPTER_FIELD_SCOPE];
+    const nlohmann::json &scope_field = json[adapter::field_name::scope];
     if (scope_field.is_string())
         _scope = octopus_mq::scope(scope_field.get<string>());
     else if (scope_field.is_array())
         _scope = octopus_mq::scope(scope_field.get<std::vector<string>>());
     else
-        throw field_type_error(OCTOMQ_ADAPTER_FIELD_SCOPE);
+        throw field_type_error(adapter::field_name::scope);
 
     // Parsing optional 'name' field
     // Derived classes may additionally set the name
-    if (json.contains(OCTOMQ_ADAPTER_FIELD_NAME)) {
-        const nlohmann::json &name_field = json[OCTOMQ_ADAPTER_FIELD_NAME];
+    if (json.contains(adapter::field_name::name)) {
+        const nlohmann::json &name_field = json[adapter::field_name::name];
         if (name_field.is_string())
             _name = name_field.get<string>();
         else
-            throw field_type_error(OCTOMQ_ADAPTER_FIELD_NAME);
+            throw field_type_error(adapter::field_name::name);
     } else {
         _name = '[' + _phy.name() + ':' + std::to_string(_port) + "] " + _protocol_name;
         _generated_name = true;
@@ -88,7 +88,8 @@ const string &adapter_settings::name() const { return _name; }
 
 bool adapter_settings::compare_binding(const ip_int ip, const port_int port) const {
     const ip_int phy_ip = _phy.ip();
-    return ((ip == phy_ip) or (ip == OCTOMQ_LOOPBACK_IP) or (phy_ip == OCTOMQ_LOOPBACK_IP)) and
+    return ((ip == phy_ip) or (ip == network::constants::loopback_ip) or
+            (phy_ip == network::constants::loopback_ip)) and
            (port == _port);
 }
 

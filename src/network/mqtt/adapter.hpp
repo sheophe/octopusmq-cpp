@@ -9,9 +9,6 @@
 #include "network/adapter.hpp"
 #include "network/network.hpp"
 
-#define OCTOMQ_MQTT_ADAPTER_ROLE_BROKER "broker"
-#define OCTOMQ_MQTT_ADAPTER_ROLE_CLIENT "client"
-
 namespace octopus_mq::mqtt {
 
 using std::string;
@@ -22,16 +19,16 @@ class adapter_settings : public octopus_mq::adapter_settings {
     adapter_role _role;
 
     static inline const std::map<string, adapter_role> _role_from_name = {
-        { OCTOMQ_MQTT_ADAPTER_ROLE_BROKER, adapter_role::broker },
-        { OCTOMQ_MQTT_ADAPTER_ROLE_CLIENT, adapter_role::client }
+        { adapter::role_name::broker, adapter_role::broker },
+        { adapter::role_name::client, adapter_role::client }
     };
 
     static inline const std::map<string, transport_type> _transport_from_name = {
-        { OCTOMQ_ADAPTER_TRANSPORT_TCP, transport_type::tcp },
-        { OCTOMQ_ADAPTER_TRANSPORT_WS, transport_type::websocket },
+        { adapter::transport_name::tcp, transport_type::tcp },
+        { adapter::transport_name::websocket, transport_type::websocket },
 #ifdef OCTOMQ_ENABLE_TLS
-        { OCTOMQ_ADAPTER_TRANSPORT_TLS, transport_type::tls },
-        { OCTOMQ_ADAPTER_TRANSPORT_TLSWS, transport_type::tls_websocket }
+        { adapter::transport_name::tls, transport_type::tls },
+        { adapter::transport_name::tls_websocket, transport_type::tls_websocket }
 #endif
     };
 

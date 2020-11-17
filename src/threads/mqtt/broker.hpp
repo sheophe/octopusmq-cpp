@@ -23,6 +23,25 @@
 
 namespace octopus_mq::mqtt {
 
+namespace packet_names {
+
+    constexpr char connect[] = "connect";
+    constexpr char connack[] = "connack";
+    constexpr char publish[] = "publish";
+    constexpr char puback[] = "puback";
+    constexpr char pubrec[] = "pubrec";
+    constexpr char pubrel[] = "pubrel";
+    constexpr char pubcomp[] = "pubcomp";
+    constexpr char subscribe[] = "subscribe";
+    constexpr char suback[] = "suback";
+    constexpr char unsubscribe[] = "unsubscribe";
+    constexpr char unsuback[] = "unsuback";
+    constexpr char pingreq[] = "pingreq";
+    constexpr char pingresp[] = "pingresp";
+    constexpr char disconnect[] = "disconnect";
+
+}  // namespace packet_names
+
 namespace multi_index = boost::multi_index;
 
 struct topic_tag {};

@@ -9,14 +9,15 @@
 namespace octopus_mq {
 
 static inline const std::map<string, protocol_type> _protocol_from_name = {
-    { "mqtt", protocol_type::mqtt }, { "dds", protocol_type::dds }
+    { adapter::protocol_name::mqtt, protocol_type::mqtt },
+    { adapter::protocol_name::dds, protocol_type::dds }
 };
 
 adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &json) {
-    if (not json.contains(OCTOMQ_ADAPTER_FIELD_PROTOCOL))
-        throw missing_field_error(OCTOMQ_ADAPTER_FIELD_PROTOCOL);
+    if (not json.contains(adapter::field_name::protocol))
+        throw missing_field_error(adapter::field_name::protocol);
 
-    const nlohmann::json &item = json[OCTOMQ_ADAPTER_FIELD_PROTOCOL];
+    const nlohmann::json &item = json[adapter::field_name::protocol];
     if (item.is_string()) {
         string protocol_name = item.get<string>();
         if (auto iter = _protocol_from_name.find(protocol_name);
@@ -36,7 +37,7 @@ adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &j
         } else
             throw unknown_protocol_error(protocol_name);
     } else
-        throw field_type_error(OCTOMQ_ADAPTER_FIELD_PROTOCOL);
+        throw field_type_error(adapter::field_name::protocol);
 }
 
 adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr settings,

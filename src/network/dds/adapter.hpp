@@ -17,8 +17,8 @@ class adapter_settings : public octopus_mq::adapter_settings {
     transport_type _transport;
 
     static inline const std::map<string, transport_type> _transport_from_name = {
-        { OCTOMQ_ADAPTER_TRANSPORT_UDP, transport_type::udp },
-        { OCTOMQ_ADAPTER_TRANSPORT_TCP, transport_type::tcp }
+        { adapter::transport_name::udp, transport_type::udp },
+        { adapter::transport_name::tcp, transport_type::tcp }
     };
 
    public:
