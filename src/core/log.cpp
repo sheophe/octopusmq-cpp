@@ -10,13 +10,6 @@ namespace octopus_mq {
 
 using std::chrono::duration_cast, std::chrono::milliseconds, std::chrono::system_clock;
 
-std::mutex log::_mutex = std::mutex();
-char log::_buffer[OCTOMQ_MAX_LOG_LINE_LENGTH] = { 0 };
-const char *log::_version_string = OCTOMQ_VERSION_STRING;
-long long log::_start_timestamp = 0;
-bool log::_relative_timestamp = false;
-string log::_last_adapter_name = string();
-
 void log::print_time(const log_type &type) {
     if (type != log_type::more) {
         auto timestamp =
@@ -72,22 +65,12 @@ void log::print(const log_type &type, const string &message) {
     }
 }
 
-void log::print_action_left(const network_event_type &event_type, const string &action) {
-    std::cout << OCTOMQ_RESET << std::right << std::setw(18) << std::setfill(' ') << action
-              << (event_type == network_event_type::receive ? " <-- " : " --> ") << OCTOMQ_RESET;
-}
-
-void log::print_action(const network_event_type &event_type, const string &action) {
-    print_time(log_type::info);
-    print_action_left(event_type, action);
-    std::cout << std::endl;
-}
-
 void log::print_action(const network_event_type &event_type, const string &action,
                        const class address &remote, const string &client_id) {
     print_time(log_type::info);
-    print_action_left(event_type, action);
-    std::cout << OCTOMQ_RESET << remote.to_string();
+    std::cout << OCTOMQ_RESET << std::right << std::setw(18) << std::setfill(' ') << action
+              << (event_type == network_event_type::receive ? " <-- " : " --> ")
+              << remote.to_string();
     if (client_id.empty())
         std::cout << std::endl;
     else
@@ -98,8 +81,8 @@ void log::print_event(const string &adapter_name, const address &remote_address,
                       const string &client_id, const network_event_type &event_type,
                       const string &action) {
     std::lock_guard<std::mutex> log_lock(_mutex);
-    print_time(log_type::more);
     if (_last_adapter_name != adapter_name) {
+        print_time(log_type::more);
         std::cout << OCTOMQ_BOLD << std::left << std::setw(35) << std::setfill(' ') << adapter_name
                   << OCTOMQ_RESET << std::endl;
         _last_adapter_name = adapter_name;
@@ -110,10 +93,10 @@ void log::print_event(const string &adapter_name, const address &remote_address,
 void log::print_help() {
     std::lock_guard<std::mutex> log_lock(_mutex);
     std::cout << OCTOMQ_BOLD << "octopusmq" << OCTOMQ_RESET
-              << " /path/to/settings.json [--option [value]]" << '\n';
+              << " /path/to/settings.json [--option [value]]" << std::endl;
     std::cout << "options:" << std::endl << std::setfill(' ');
     std::cout << std::left << std::setw(16) << "    --daemon" << std::setw(0)
-              << "daemonize the process. useful when running from systemd." << '\n';
+              << "daemonize the process. useful when running from systemd." << std::endl;
     std::cout << std::left << std::setw(16) << "    --help" << std::setw(0)
               << "print this help message and exit." << std::endl;
 }

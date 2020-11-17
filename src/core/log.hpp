@@ -38,16 +38,16 @@ using std::string;
 enum class log_type { info, note, warning, error, fatal, more };
 
 class log {
-    static std::mutex _mutex;
-    static char _buffer[OCTOMQ_MAX_LOG_LINE_LENGTH];
-    static const char *_version_string;
-    static long long _start_timestamp;
-    static bool _relative_timestamp;
-    static string _last_adapter_name;
+    static inline std::mutex _mutex;
+    static inline char _buffer[OCTOMQ_MAX_LOG_LINE_LENGTH] = { 0 };
+    static constexpr char _version_string[] = OCTOMQ_VERSION_STRING;
+    static inline long long _start_timestamp = 0;
+    static inline bool _relative_timestamp = false;
+    static inline string _last_adapter_name;
 
     static inline const std::map<log_type, string> _log_prefix = {
         { log_type::info, "" },
-        { log_type::note, OCTOMQ_RESET OCTOMQ_BOLD "note: " OCTOMQ_RESET OCTOMQ_BOLD },
+        { log_type::note, OCTOMQ_CYAN OCTOMQ_BOLD "note: " OCTOMQ_RESET OCTOMQ_BOLD },
         { log_type::warning, OCTOMQ_YELLOW OCTOMQ_BOLD "warning: " OCTOMQ_RESET OCTOMQ_BOLD },
         { log_type::error, OCTOMQ_RED OCTOMQ_BOLD "error: " OCTOMQ_RESET OCTOMQ_BOLD },
         { log_type::fatal, OCTOMQ_RED OCTOMQ_BOLD "fatal: " OCTOMQ_RESET OCTOMQ_BOLD },
@@ -55,7 +55,6 @@ class log {
     };
 
     static void print_time(const log_type &type);
-    static void print_action_left(const network_event_type &event_type, const string &action);
 
    public:
     static void print_started(const bool daemon = false);
@@ -66,7 +65,6 @@ class log {
     static void print_event(const string &adapter_name, const address &remote_address,
                             const string &client_id, const network_event_type &event_type,
                             const string &action);
-    static void print_action(const network_event_type &event_type, const string &action);
     static void print_action(const network_event_type &event_type, const string &action,
                              const class address &remote, const string &client_id);
     static void print_help();
