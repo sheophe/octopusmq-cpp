@@ -15,6 +15,7 @@ static octopus_mq::adapter_settings_parser adapter_settings_parser = {
           } else
               throw field_type_error(adapter::field_name::transport);
       } },
+#ifdef OCTOMQ_ENABLE_MQTT_CLIENT
     { adapter::field_name::role,
       [](octopus_mq::adapter_settings *self, const adapter_settings_parser_item &item) {
           if (item->is_string()) {
@@ -24,11 +25,15 @@ static octopus_mq::adapter_settings_parser adapter_settings_parser = {
           } else
               throw field_type_error(adapter::field_name::role);
       } }
+#endif
 };
 
 adapter_settings::adapter_settings(const nlohmann::json &json)
     : octopus_mq::adapter_settings(protocol_type::mqtt, json) {
     // Parse protocol-specific fields from JSON
+#ifndef OCTOMQ_ENABLE_MQTT_CLIENT
+    name_append(mqtt::adapter_role_name::broker);
+#endif
     for (auto item_parser : adapter_settings_parser)
         if (auto json_item = json.find(item_parser.first); json_item != json.end())
             item_parser.second(this, json_item);
@@ -45,6 +50,9 @@ void adapter_settings::transport(const string &transport) {
         throw std::runtime_error("unsupported transport for mqtt adapter: " + transport);
 }
 
+const transport_type &adapter_settings::transport() const { return _transport; }
+
+#ifdef OCTOMQ_ENABLE_MQTT_CLIENT
 void adapter_settings::role(const adapter_role &role) { _role = role; }
 
 void adapter_settings::role(const string &role) {
@@ -54,8 +62,7 @@ void adapter_settings::role(const string &role) {
         throw std::runtime_error("unknown mqtt adapter role: " + role);
 }
 
-const transport_type &adapter_settings::transport() const { return _transport; }
-
 const adapter_role &adapter_settings::role() const { return _role; }
+#endif
 
 }  // namespace octopus_mq::mqtt

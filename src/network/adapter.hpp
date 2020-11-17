@@ -34,30 +34,6 @@ namespace adapter {
 
     }  // namespace field_name
 
-    namespace transport_name {
-
-        constexpr char udp[] = "udp";
-        constexpr char tcp[] = "tcp";
-        constexpr char tls[] = "tls";
-        constexpr char websocket[] = "websocket";
-        constexpr char tls_websocket[] = "tls/websocket";
-
-    }  // namespace transport_name
-
-    namespace protocol_name {
-
-        constexpr char mqtt[] = "mqtt";
-        constexpr char dds[] = "dds";
-
-    }  // namespace protocol_name
-
-    namespace role_name {
-
-        constexpr char broker[] = "broker";
-        constexpr char client[] = "client";
-
-    }  // namespace role_name
-
 }  // namespace adapter
 
 using std::string, std::shared_ptr;

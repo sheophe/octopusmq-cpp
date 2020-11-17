@@ -5,7 +5,6 @@
             "protocol": "mqtt",
             "transport": "tcp",
             "port": 1883,
-            "role": "broker",
             "scope": "#"
         },
         {
@@ -13,7 +12,6 @@
             "protocol": "mqtt",
             "transport": "websocket",
             "port": 19001,
-            "role": "broker",
             "scope": "#"
         }
     ]

@@ -11,7 +11,7 @@ using std::string;
 
 enum class protocol_type { mqtt, dds };
 
-enum class tx_type { unicast, multicast, broadcast };
+enum class transport_mode { unicast, multicast, broadcast };
 
 enum class transport_type { udp, tcp, tls, websocket, tls_websocket };
 
@@ -38,13 +38,45 @@ namespace network {
 
     }  // namespace constants
 
+    namespace transport_name {
+
+        constexpr char udp[] = "udp";
+        constexpr char tcp[] = "tcp";
+        constexpr char tls[] = "tls";
+        constexpr char websocket[] = "websocket";
+        constexpr char tls_websocket[] = "tls/websocket";
+
+    }  // namespace transport_name
+
+    namespace transport_mode_name {
+
+        constexpr char unicast[] = "unicast";
+        constexpr char multicast[] = "multicast";
+        constexpr char broadcast[] = "broadcast";
+
+    }  // namespace transport_mode_name
+
+    namespace protocol_name {
+
+        constexpr char mqtt[] = "mqtt";
+        constexpr char dds[] = "dds";
+
+    }  // namespace protocol_name
+
 }  // namespace network
 
 namespace mqtt {
 
+    enum class version { v3, v5 };
+
     enum class adapter_role { broker, client };
 
-    enum class version { v3, v5 };
+    namespace adapter_role_name {
+
+        constexpr char broker[] = "broker";
+        constexpr char client[] = "client";
+
+    }  // namespace adapter_role_name
 
 }  // namespace mqtt
 
