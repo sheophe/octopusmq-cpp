@@ -60,19 +60,22 @@ class broker final : public adapter_interface {
         connection_sp con;
         mqtt_cpp::qos qos_value;
         mqtt_cpp::rap rap_value;
+        mqtt_cpp::nl nl_value;
 
         subscription(mqtt_cpp::buffer topic_filter, connection_sp con, mqtt_cpp::qos qos_value)
             : topic_filter(std::move(topic_filter)),
               con(std::move(con)),
               qos_value(qos_value),
-              rap_value(mqtt_cpp::rap::dont) {}  // MQTT v3 constructor
+              rap_value(mqtt_cpp::rap::dont),
+              nl_value(mqtt_cpp::nl::no) {}  // MQTT v3 constructor
 
         subscription(mqtt_cpp::buffer topic_filter, connection_sp con, mqtt_cpp::qos qos_value,
-                     mqtt_cpp::rap rap_value)
+                     mqtt_cpp::rap rap_value, mqtt_cpp::nl nl_value)
             : topic_filter(std::move(topic_filter)),
               con(std::move(con)),
               qos_value(qos_value),
-              rap_value(rap_value) {}  // MQTT v5 constructor
+              rap_value(rap_value),
+              nl_value(nl_value) {}  // MQTT v5 constructor
     };
 
     using subscription_container = multi_index::multi_index_container<

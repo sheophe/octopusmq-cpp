@@ -362,6 +362,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             auto const& idx = this->_subs.template get<topic_tag>();
             for (auto& sub : idx) {
                 if (scope::matches_filter(sub.topic_filter, topic_name)) {
+                    if (sub.nl_value == mqtt_cpp::nl::yes && sub.con == sp) continue;
                     mqtt_cpp::retain retain = (sub.rap_value == mqtt_cpp::rap::retain)
                                                   ? pubopts.get_retain()
                                                   : mqtt_cpp::retain::no;
@@ -396,9 +397,11 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                     if (scope::valid_topic_filter(topic_filter)) {
                         mqtt_cpp::qos qos_value = std::get<1>(e).get_qos();
                         mqtt_cpp::rap rap_value = std::get<1>(e).get_rap();
+                        mqtt_cpp::nl nl_value = std::get<1>(e).get_nl();
                         res.emplace_back(mqtt_cpp::v5::qos_to_suback_reason_code(qos_value));
                         std::lock_guard<std::mutex> _subs_lock(this->_subs_mutex);
-                        this->_subs.emplace(std::move(topic_filter), sp, qos_value, rap_value);
+                        this->_subs.emplace(std::move(topic_filter), sp, qos_value, rap_value,
+                                            nl_value);
                     } else
                         res.emplace_back(mqtt_cpp::v5::suback_reason_code::topic_filter_invalid);
                 }
