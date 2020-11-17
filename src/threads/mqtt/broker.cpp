@@ -22,8 +22,8 @@ namespace octopus_mq::mqtt {
 
 using namespace boost::asio;
 
-static string boost_error_to_string(const int& error) {
-    switch (error) {
+static string boost_error_to_string(const mqtt_cpp::error_code& error) {
+    switch (error.value()) {
         case boost::asio::error::eof:
             return "connection lost";
         case boost::asio::error::connection_aborted:
@@ -40,8 +40,12 @@ static string boost_error_to_string(const int& error) {
             return "message too long";
         case boost::asio::error::network_down:
             return "network is down";
-        default:
-            return "error " + std::to_string(error);
+        default: {
+            string message = error.message();
+            std::transform(message.begin(), message.end(), message.begin(),
+                           [](unsigned char c) { return std::tolower(c); });
+            return message;
+        }
     }
 }
 
@@ -130,7 +134,7 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             // In this case socket error may pop up, but that is expected
             if (_connections.find(sp) != _connections.end()) {
                 std::string message =
-                    boost_error_to_string(ec.value()) + " at " + _meta[sp].address.to_string();
+                    boost_error_to_string(ec) + " at " + _meta[sp].address.to_string();
                 if (not _meta[sp].client_id.empty()) message += " (" + _meta[sp].client_id + ").";
                 log::print(log_type::error, _adapter_settings->name() + ": " + message);
                 this->close_connection(sp);
