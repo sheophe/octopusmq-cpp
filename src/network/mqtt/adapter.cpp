@@ -54,20 +54,8 @@ void adapter_settings::role(const string &role) {
         throw std::runtime_error("unknown mqtt adapter role: " + role);
 }
 
-void adapter_settings::scope(const string &scope) {
-    // Check the actual string
-    _scope.push_back(scope);
-}
-
-void adapter_settings::scope(const std::list<string> &scope) {
-    // Check the actual strings
-    _scope = scope;
-}
-
 const transport_type &adapter_settings::transport() const { return _transport; }
 
 const adapter_role &adapter_settings::role() const { return _role; }
-
-const std::list<string> &adapter_settings::scope() const { return _scope; }
 
 }  // namespace octopus_mq::mqtt

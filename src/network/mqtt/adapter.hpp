@@ -20,7 +20,6 @@ class adapter_settings : public octopus_mq::adapter_settings {
     transport_type _transport;
     address _remote_address;  // is used only when adapter is in client mode
     adapter_role _role;
-    std::list<string> _scope;
 
     static inline const std::map<string, adapter_role> _role_from_name = {
         { OCTOMQ_MQTT_ADAPTER_ROLE_BROKER, adapter_role::broker },
@@ -43,12 +42,9 @@ class adapter_settings : public octopus_mq::adapter_settings {
     void transport(const string &transport);
     void role(const adapter_role &role);
     void role(const string &role);
-    void scope(const string &scope);
-    void scope(const std::list<string> &scope);
 
     const transport_type &transport() const;
     const adapter_role &role() const;
-    const std::list<string> &scope() const;
 };
 
 using adapter_settings_ptr = std::shared_ptr<adapter_settings>;
