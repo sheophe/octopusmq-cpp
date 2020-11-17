@@ -1,0 +1,34 @@
+{
+    "adapters": [
+        {
+            "interface": "*",
+            "protocol": "mqtt",
+            "transport": "tcp",
+            "port": 1883,
+            "role": "broker",
+            "scope": "#"
+        },
+        {
+            "interface": "*",
+            "protocol": "mqtt",
+            "transport": "websocket",
+            "port": 19001,
+            "role": "broker",
+            "scope": "#"
+        },
+        {
+            "interface": "lo0",
+            "protocol": "bridge",
+            "search": {
+                "from": "*.*.*.1",
+                "to": "*.*.*.10"
+            },
+            "timeouts": {
+                "discovery": 1000,
+                "acknowledge": 1000,
+                "heartbeat": 60000
+            },
+            "scope": "#"
+        }
+    ]
+}
