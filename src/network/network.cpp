@@ -43,8 +43,8 @@ void address::address_string(const string &address_string) {
     if (pos != string::npos) {
         string ip = address_string.substr(0, pos);
         string port = address_string.substr(pos + 1);
-        _ip = to_ip(ip);
-        _port = stoi(port);
+        _ip = ip.empty() ? OCTOMQ_NULL_IP : to_ip(ip);
+        _port = port.empty() ? OCTOMQ_NULL_PORT : stoi(port);
     } else if (address_string.size() >= sizeof("0.0.0.0")) {
         _ip = to_ip(address_string);
         _port = OCTOMQ_NULL_PORT;
