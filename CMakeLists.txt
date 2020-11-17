@@ -6,17 +6,12 @@ project(octopusmq VERSION 1.2.0 LANGUAGES CXX)
 
 option(OCTOMQ_ENABLE_TLS "Enable TLS support (OpenSSL is required)" OFF)
 option(OCTOMQ_ENABLE_DDS "Enable DDS support (OpenDDS patched for C++17 is required)" ON)
+option(OCTOMQ_ENABLE_MQTT_CLIENT "Enable MQTT client adapter" OFF)
 option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" OFF)
 option(OCTOMQ_USE_STATIC_LIBS "Use static linkage to Boost libraries" OFF)
 
 find_package(Boost 1.66.0 REQUIRED)
 find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
-
-if(OCTOMQ_ENABLE_DDS)
-    find_package(OpenDDS 3.14 REQUIRED)
-    set(OPENDDS_CMAKE_VERBOSE ON)
-    add_definitions(-DOCTOMQ_USE_DDS)
-endif()
 
 if(OCTOMQ_ENABLE_TLS)
     message(STATUS "Building with TLS support")
@@ -24,6 +19,19 @@ if(OCTOMQ_ENABLE_TLS)
     find_package(OpenSSL REQUIRED)
 else()
     message(STATUS "Building without TLS support")
+endif()
+
+if(OCTOMQ_ENABLE_DDS)
+    find_package(OpenDDS 3.14 REQUIRED)
+    set(OPENDDS_CMAKE_VERBOSE ON)
+    add_definitions(-DOCTOMQ_USE_DDS)
+endif()
+
+if(OCTOMQ_ENABLE_MQTT_CLIENT)
+    message(STATUS "Building with MQTT client adapter support")
+    add_definitions(-DOCTOMQ_ENABLE_MQTT_CLIENT)
+else()
+    message(STATUS "Building without MQTT client adapter support")
 endif()
 
 if(OCTOMQ_USE_STATIC_LIBS)
@@ -66,6 +74,13 @@ set(SRC_LIST
     ${THREADS_DIR}/control.cpp
     ${SRC_DIR}/octopus_mq.cpp
 )
+
+if(OCTOMQ_ENABLE_MQTT_CLIENT)
+    set(SRC_LIST
+        ${SRC_LIST}
+        ${THREADS_DIR}/mqtt/client.cpp
+    )
+endif()
 
 if(OCTOMQ_ENABLE_DDS)
     set(SRC_LIST
