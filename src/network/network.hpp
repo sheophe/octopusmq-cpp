@@ -23,7 +23,7 @@ using ip_int = uint32_t;
 
 using socket_int = int32_t;
 
-using network_payload = std::vector<unsigned char>;
+using network_payload = std::vector<char>;
 
 namespace network {
 

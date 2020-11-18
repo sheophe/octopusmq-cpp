@@ -10,10 +10,13 @@ message::message(message_payload &&payload, const string &origin_client_id)
     : _payload(move(payload)), _origin_client_id(origin_client_id), _origin_pubopts(0) {}
 
 message::message(message_payload &&payload, const string &topic, const uint8_t pubopts,
+                 const address &origin_addr, const string &origin_clid,
                  const mqtt::version &version, const mqtt_cpp::v5::properties &props)
     : _payload(move(payload)),
       _topic(topic),
       _mqtt_version(version),
+      _origin_address(origin_addr),
+      _origin_client_id(origin_clid),
       _origin_pubopts(pubopts),
       _origin_props(props) {}
 
@@ -26,7 +29,9 @@ void message::payload(message_payload &&payload) { _payload = move(payload); }
 
 void message::topic(const string &topic) { _topic = topic; }
 
-void message::origin(const string &origin_client_id) { _origin_client_id = origin_client_id; }
+void message::origin_addr(const address &origin_address) { _origin_address = origin_address; }
+
+void message::origin_clid(const string &origin_client_id) { _origin_client_id = origin_client_id; }
 
 void message::pubopts(const uint8_t pubopts) { _origin_pubopts = pubopts; }
 
@@ -38,7 +43,9 @@ const message_payload &message::payload() const { return _payload; }
 
 const string &message::topic() const { return _topic; }
 
-const string &message::origin() const { return _origin_client_id; }
+const address &message::origin_addr() const { return _origin_address; }
+
+const string &message::origin_clid() const { return _origin_client_id; }
 
 const uint8_t &message::pubopts() const { return _origin_pubopts; }
 
@@ -46,11 +53,11 @@ const mqtt_cpp::v5::properties &message::props() const { return _origin_props; }
 
 const mqtt::version &message::mqtt_version() const { return _mqtt_version; }
 
-scope::scope() : _is_global_wildcard(true) {}
+scope::scope() : _is_absolute_wildcard(false) {}
 
-scope::scope(const string &scope_string) : _is_global_wildcard(false) {
+scope::scope(const string &scope_string) : _is_absolute_wildcard(false) {
     if (scope_string == hash_sign)
-        _is_global_wildcard = true;
+        _is_absolute_wildcard = true;
     else {
         if (topic_tokens tokens = tokenize_topic_filter(scope_string); not tokens.empty())
             _scope.push_back(tokens);
@@ -59,16 +66,49 @@ scope::scope(const string &scope_string) : _is_global_wildcard(false) {
     }
 }
 
-scope::scope(const std::vector<string> &scope_vector) : _is_global_wildcard(false) {
+scope::scope(const std::vector<string> &scope_vector) : _is_absolute_wildcard(false) {
     for (auto &scope_string : scope_vector) {
         if (scope_string == hash_sign) {
-            _is_global_wildcard = true;
+            _scope.clear();
+            _is_absolute_wildcard = true;
             break;
         }
         if (topic_tokens tokens = tokenize_topic_filter(scope_string); not tokens.empty())
             _scope.push_back(tokens);
         else
             throw invalid_topic_filter(scope_string);
+    }
+}
+
+bool scope::add(const string &topic_filter) {
+    if (topic_filter == hash_sign) {
+        _scope.clear();
+        _is_absolute_wildcard = true;
+        return true;
+    }
+
+    topic_tokens tokens = tokenize_topic_filter(topic_filter);
+    if (tokens.empty()) return false;
+    // Ensure there are no two equal topic filers is scope
+    if (std::find(_scope.begin(), _scope.end(), tokens) == _scope.end()) {
+        _scope.push_back(tokens);
+        _is_absolute_wildcard = false;
+    }
+    return true;
+}
+
+void scope::remove(const string &topic_filter) {
+    if (topic_filter == hash_sign) {
+        _scope.clear();
+        _is_absolute_wildcard = false;
+        return;
+    }
+
+    topic_tokens tokens = tokenize_topic_filter(topic_filter);
+    if (tokens.empty()) return;
+    if (auto iter = std::find(_scope.begin(), _scope.end(), tokens); iter != _scope.end()) {
+        _scope.erase(iter);
+        _is_absolute_wildcard = false;
     }
 }
 
@@ -148,8 +188,11 @@ bool scope::compare_topics(const topic_tokens &filter, const topic_tokens &topic
     return true;
 }
 
+bool scope::empty() const { return _scope.empty(); }
+
 bool scope::includes(const string &topic) const {
-    if (_is_global_wildcard) return true;
+    if (_is_absolute_wildcard) return true;
+    if (_scope.empty()) return false;
 
     topic_tokens topic_tokens = tokenize_topic(topic);
     if (topic_tokens.empty()) return false;
@@ -162,6 +205,14 @@ bool scope::includes(const string &topic) const {
     }
 
     return match;
+}
+
+bool scope::contains(const string &topic_filter) const {
+    if (topic_filter == hash_sign) return _is_absolute_wildcard;
+
+    topic_tokens tokens = tokenize_topic_filter(topic_filter);
+    if (tokens.empty()) return false;
+    return std::find(_scope.begin(), _scope.end(), tokens) != _scope.end();
 }
 
 bool scope::valid_topic_filter(const std::string_view &topic_filter) {

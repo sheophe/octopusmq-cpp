@@ -49,12 +49,14 @@ template <typename Server>
 inline void broker<Server>::share(const mqtt_cpp::buffer& topic_name,
                                   const mqtt_cpp::buffer& contents,
                                   const mqtt_cpp::publish_options& pubopts,
+                                  const address& origin_address, const std::string& origin_clid,
                                   const mqtt::version version,
                                   const mqtt_cpp::v5::properties& props) {
     message_payload payload(contents.begin(), contents.end());
     std::string topic(topic_name);
     message_ptr shared_message =
-        std::make_shared<message>(std::move(payload), topic, std::uint8_t(pubopts), version, props);
+        std::make_shared<message>(std::move(payload), topic, std::uint8_t(pubopts), origin_address,
+                                  origin_clid, version, props);
     _global_queue.push(_adapter_settings, shared_message);
 }
 
@@ -221,7 +223,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 }
             }
             _subs_lock.unlock();
-            this->share(topic_name, contents, pubopts, mqtt::version::v3);
+            this->share(topic_name, contents, pubopts, _meta[sp].address, _meta[sp].client_id,
+                        mqtt::version::v3);
             return true;
         });
 
@@ -366,7 +369,8 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 }
             }
             _subs_lock.unlock();
-            this->share(topic_name, contents, pubopts, mqtt::version::v5, props);
+            this->share(topic_name, contents, pubopts, _meta[sp].address, _meta[sp].client_id,
+                        mqtt::version::v5, props);
             return true;
         });
 

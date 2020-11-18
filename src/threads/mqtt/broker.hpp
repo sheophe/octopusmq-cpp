@@ -129,7 +129,8 @@ class broker final : public adapter_interface {
     inline void worker();
 
     inline void share(const mqtt_cpp::buffer& topic_name, const mqtt_cpp::buffer& contents,
-                      const mqtt_cpp::publish_options& pubopts,
+                      const mqtt_cpp::publish_options& pubopts, const address& origin_address,
+                      const std::string& origin_clid,
                       const mqtt::version version = mqtt::version::v3,
                       const mqtt_cpp::v5::properties& props = mqtt_cpp::v5::properties());
 

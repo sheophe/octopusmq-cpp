@@ -126,6 +126,21 @@ class bridge_discovery_not_set : public std::runtime_error {
         : std::runtime_error("bridge adapter: discovery endpoints are not defined.") {}
 };
 
+class bridge_malformed_packet : public std::runtime_error {
+   public:
+    explicit bridge_malformed_packet(const std::string &packet_name)
+        : std::runtime_error("bridge adapter: received malformed packet '" + packet_name + '\'') {}
+
+    explicit bridge_malformed_packet()
+        : std::runtime_error("bridge adapter: received malformed packet") {}
+};
+
+class bridge_malformed_packet_constructed : public std::runtime_error {
+   public:
+    explicit bridge_malformed_packet_constructed()
+        : std::runtime_error("bridge adapter: tried to construct malformed packet") {}
+};
+
 }  // namespace octopus_mq
 
 #endif

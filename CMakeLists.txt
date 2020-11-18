@@ -70,6 +70,7 @@ set(SRC_LIST
     ${NETWORK_DIR}/adapter.cpp
     ${NETWORK_DIR}/adapter_factory.cpp
     ${NETWORK_DIR}/bridge/adapter.cpp
+    ${NETWORK_DIR}/bridge/protocol.cpp
     ${THREADS_DIR}/bridge/bridge.cpp
     ${NETWORK_DIR}/mqtt/adapter.cpp
     ${THREADS_DIR}/mqtt/broker.cpp
