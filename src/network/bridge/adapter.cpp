@@ -28,7 +28,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
 
         if (mode_name == network::transport_mode_name::unicast) {
             // Parsing endpoints for unicast discovery mode
-            discovery_endpoints_format format = discovery_endpoints_format::list;
+            discovery_endpoints_format format;
             discovery_endpoints endpoints;
 
             if (discovery_field.contains(adapter::field_name::endpoints)) {
@@ -43,6 +43,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                 std::vector<string> endpoints_strvec = endpoints_field.get<std::vector<string>>();
 
                 // Variable 'format' is initialized as 'list', so no need to set it here again
+                format = discovery_endpoints_format::list;
                 endpoints = discovery_list();
                 for (auto& endpoint_string : endpoints_strvec) {
                     address addr(endpoint_string);
@@ -84,8 +85,14 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                 endpoints = discovery_range();
                 std::get<discovery_range>(endpoints).from = from_ip;
                 std::get<discovery_range>(endpoints).to = to_ip;
-            } else
-                throw bridge_discovery_not_set();
+            } else {
+                // Use full range for selected network interface if no endpoints were specified
+                // in config
+                format = discovery_endpoints_format::range;
+                endpoints = discovery_range();
+                std::get<discovery_range>(endpoints).from = phy().host_min();
+                std::get<discovery_range>(endpoints).to = phy().host_max();
+            }
 
             this->discovery(format, endpoints);
         }
@@ -94,6 +101,12 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
             throw invalid_bridge_discovery_mode(mode_name);
     } else
         throw field_type_error(adapter::field_name::discovery, adapter::field_name::mode);
+
+    name_append("(udp " +
+                std::string(_discovery_settings.mode == transport_mode::unicast
+                                ? network::transport_mode_name::unicast
+                                : network::transport_mode_name::broadcast) +
+                ')');
 
     // Parsing optional timeouts field
     std::chrono::milliseconds discovery_timeout = adapter::default_timeouts::discovery;

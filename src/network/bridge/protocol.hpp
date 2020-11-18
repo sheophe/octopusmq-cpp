@@ -137,6 +137,7 @@ namespace protocol {
             version version;
             packet_type type;
             uint32_t sequence_number;
+
             network_payload payload;
 
             static packet_family family(const packet_type& type);
