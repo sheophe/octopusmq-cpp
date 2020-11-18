@@ -27,6 +27,7 @@ namespace adapter {
         constexpr char timeouts[] = "timeouts";
         constexpr char acknowledge[] = "acknowledge";
         constexpr char heartbeat[] = "heartbeat";
+        constexpr char rescan[] = "rescan";
 
     }  // namespace field_name
 
@@ -35,6 +36,7 @@ namespace adapter {
         constexpr std::chrono::milliseconds discovery = 10000ms;
         constexpr std::chrono::milliseconds acknowledge = 1000ms;
         constexpr std::chrono::milliseconds heartbeat = 60000ms;
+        constexpr std::chrono::milliseconds rescan = 60000ms;
 
     }  // namespace default_timeouts
 
@@ -68,6 +70,7 @@ class timeouts {
     std::chrono::milliseconds discovery;
     std::chrono::milliseconds acknowledge;
     std::chrono::milliseconds heartbeat;
+    std::chrono::milliseconds rescan;
 };
 
 class adapter_settings : public octopus_mq::adapter_settings {
@@ -82,7 +85,8 @@ class adapter_settings : public octopus_mq::adapter_settings {
     void discovery(const discovery_endpoints_format& format, const discovery_endpoints& endpoints);
     void timeouts(const std::chrono::milliseconds& discovery,
                   const std::chrono::milliseconds& acknowledge,
-                  const std::chrono::milliseconds& heartbeat);
+                  const std::chrono::milliseconds& heartbeat,
+                  const std::chrono::milliseconds& rescan);
 
     const discovery_settings& discovery() const;
     const bridge::timeouts& timeouts() const;

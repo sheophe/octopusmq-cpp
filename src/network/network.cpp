@@ -178,6 +178,12 @@ const string phy::ip_string() const {
 
 const ip_int &phy::netmask() const { return _netmask; }
 
-ip_int phy::broadcast_address() const { return _ip | ~_netmask; }
+ip_int phy::wildcard() const { return ~_netmask; }
+
+ip_int phy::broadcast() const { return _ip | ~_netmask; }
+
+ip_int phy::host_min() const { return (_ip & _netmask) | network::constants::host_min_mask; }
+
+ip_int phy::host_max() const { return (_ip | ~_netmask) & network::constants::host_max_mask; }
 
 }  // namespace octopus_mq

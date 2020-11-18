@@ -14,15 +14,6 @@ namespace octopus_mq::bridge {
 
 using std::string;
 
-class endpoints {
-   public:
-    // In discovery process, octopus_mq send
-    address address;
-    scope scope;
-};
-
-using endpoints_ptr = std::shared_ptr<endpoints>;
-
 namespace protocol {
 
     enum class version { v1 = 0x01 };
@@ -33,12 +24,11 @@ namespace protocol {
 
         // 0x0* -- "packet" — sent by octopus_mq
         // 0x1* -- "packet"_ack -- received by octopus_mq
-        // 0x2* -- "packet"_nack -- send by octopus_mq after timeout if "packet"_ack was not
-        // received
+        // 0x2* -- "packet"_nack -- send by octopus_mq after specified timeout if "packet"_ack was
+        // not received
         enum class packet_type {
             probe = 0x01,
             probe_ack = 0x11,
-            probe_nack = 0x21,
             heartbeat = 0x02,
             heartbeat_ack = 0x12,
             heartbeat_nack = 0x22,
@@ -54,7 +44,7 @@ namespace protocol {
             disconnect = 0x06,
             disconnect_ack = 0x16,
             disconnect_nack = 0x26,
-            unknown = 0xff
+            unknown = 0xf0
         };
 
         namespace packet_name {
@@ -88,7 +78,10 @@ namespace protocol {
             constexpr int seq_n_size = sizeof(uint32_t);
             constexpr int header_size = seq_n_offset + seq_n_size;
 
+            constexpr int uninit_seq_n = 0;
             constexpr int min_seq_n = 1;
+            constexpr int uninit_sub_id = 0;
+            constexpr int uninit_pub_id = 0;
 
             constexpr int subscription_flags_size = sizeof(uint8_t);
             constexpr int publication_flags_size =
@@ -241,6 +234,27 @@ namespace protocol {
     }  // namespace v1
 
 }  // namespace protocol
+
+class connection {
+   public:
+    connection()
+        : last_sent(protocol::v1::packet_type::unknown),
+          last_received(protocol::v1::packet_type::unknown),
+          last_seq_n(protocol::v1::constants::uninit_seq_n),
+          last_pub_id(protocol::v1::constants::uninit_pub_id),
+          last_sub_id(protocol::v1::constants::uninit_sub_id) {}
+
+    address address;
+    scope scope;
+    protocol::v1::subscriptions subs;
+    protocol::v1::packet_type last_sent;
+    protocol::v1::packet_type last_received;
+    uint32_t last_seq_n;
+    uint32_t last_pub_id;
+    uint32_t last_sub_id;
+};
+
+using connection_ptr = std::shared_ptr<connection>;
 
 }  // namespace octopus_mq::bridge
 

@@ -72,14 +72,13 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                 const ip_int& to_ip = to_addr.ip();
                 if (to_ip == network::constants::null_ip) throw invalid_bridge_endpoint(to_string);
 
-                // Currently only supporting endpoints from the same subnet
-                const ip_int from_subnet = from_ip & network::constants::extract_subnets;
-                const ip_int to_subnet = to_ip & network::constants::extract_subnets;
-                if (from_subnet != to_subnet) throw bridge_range_different_subnets();
+                // Currently only supporting endpoints from the same networks
+                if ((from_ip & phy().netmask()) != (to_ip & phy().netmask()))
+                    throw bridge_range_different_nets();
 
-                const ip_int from_msb = from_ip & network::constants::extract_msb;
-                const ip_int to_msb = to_ip & network::constants::extract_msb;
-                if (to_msb < from_msb) throw invalid_bridge_range();
+                if (((from_ip & phy().wildcard()) > (to_ip & phy().wildcard())) or
+                    (from_ip < phy().host_min()) or (to_ip > phy().host_max()))
+                    throw invalid_bridge_range();
 
                 format = discovery_endpoints_format::range;
                 endpoints = discovery_range();
@@ -100,6 +99,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
     std::chrono::milliseconds discovery_timeout = adapter::default_timeouts::discovery;
     std::chrono::milliseconds acknowledge_timeout = adapter::default_timeouts::acknowledge;
     std::chrono::milliseconds heartbeat_timeout = adapter::default_timeouts::heartbeat;
+    std::chrono::milliseconds rescan_timeout = adapter::default_timeouts::rescan;
 
     if (json.contains(adapter::field_name::timeouts)) {
         const nlohmann::json timeouts_field = json[adapter::field_name::timeouts];
@@ -143,9 +143,20 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
             uint32_t heartbeat_int = heartbeat_timeout_field.get<uint32_t>();
             heartbeat_timeout = std::chrono::milliseconds(heartbeat_int);
         }
+
+        // Parsing optional timeouts.rescan field
+        if (timeouts_field.contains(adapter::field_name::rescan)) {
+            const nlohmann::json rescan_timeout_field = timeouts_field[adapter::field_name::rescan];
+
+            if (not rescan_timeout_field.is_number_integer())
+                throw field_type_error(adapter::field_name::timeouts, adapter::field_name::rescan);
+
+            uint32_t rescan_int = rescan_timeout_field.get<uint32_t>();
+            rescan_timeout = std::chrono::milliseconds(rescan_int);
+        }
     }
 
-    timeouts(discovery_timeout, acknowledge_timeout, heartbeat_timeout);
+    timeouts(discovery_timeout, acknowledge_timeout, heartbeat_timeout, rescan_timeout);
 }
 
 void adapter_settings::discovery(const discovery_endpoints_format& format,
@@ -157,10 +168,12 @@ void adapter_settings::discovery(const discovery_endpoints_format& format,
 
 void adapter_settings::timeouts(const std::chrono::milliseconds& discovery,
                                 const std::chrono::milliseconds& acknowledge,
-                                const std::chrono::milliseconds& heartbeat) {
+                                const std::chrono::milliseconds& heartbeat,
+                                const std::chrono::milliseconds& rescan) {
     _timeouts.discovery = discovery;
     _timeouts.acknowledge = acknowledge;
     _timeouts.heartbeat = heartbeat;
+    _timeouts.rescan = rescan;
 }
 
 const discovery_settings& adapter_settings::discovery() const { return _discovery_settings; }

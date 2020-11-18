@@ -114,10 +114,10 @@ class invalid_bridge_range : public std::runtime_error {
         : std::runtime_error("bridge adapter: invalid address range.") {}
 };
 
-class bridge_range_different_subnets : public std::runtime_error {
+class bridge_range_different_nets : public std::runtime_error {
    public:
-    explicit bridge_range_different_subnets()
-        : std::runtime_error("bridge adapter: cannot use address range from different subnets.") {}
+    explicit bridge_range_different_nets()
+        : std::runtime_error("bridge adapter: cannot use address range from different networks.") {}
 };
 
 class bridge_discovery_not_set : public std::runtime_error {

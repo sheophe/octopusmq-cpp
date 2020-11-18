@@ -10,6 +10,7 @@ static std::map<const packet_type, const std::string> packet_name_map = {
     { packet_type::probe, packet_name::probe },
     { packet_type::heartbeat, packet_name::heartbeat },
     { packet_type::subscribe, packet_name::subscribe },
+    { packet_type::unsubscribe, packet_name::unsubscribe },
     { packet_type::publish, packet_name::publish },
     { packet_type::disconnect, packet_name::disconnect }
 };
@@ -68,8 +69,7 @@ void subscription::serialize(network_payload& payload) const {
 uint32_t subscription::deserialize(const network_payload::const_iterator begin) {
     const uint32_t size = *reinterpret_cast<const uint32_t*>(begin.base());
     qos = *reinterpret_cast<const uint8_t*>(begin.base() + sizeof(size));
-    topic_filter =
-        std::string(begin + sizeof(size) + sizeof(qos), begin + sizeof(size) + sizeof(qos) + size);
+    topic_filter = std::string(begin + sizeof(size) + sizeof(qos), begin + sizeof(size) + size);
     return size + sizeof(size);
 }
 
@@ -103,7 +103,7 @@ uint32_t publication::deserialize(const network_payload::const_iterator begin) {
     const network_payload::const_iterator payload_begin =
         begin + sizeof(size) + sizeof(qos) + sizeof(origin_port) + sizeof(origin_ip) +
         sizeof(origin_clid) + 1 + sizeof(topic) + 1;
-    const network_payload::const_iterator payload_end = begin + size;
+    const network_payload::const_iterator payload_end = begin + sizeof(size) + size;
     message = std::make_shared<message_payload>(payload_begin, payload_end);
     return size + sizeof(size);
 }

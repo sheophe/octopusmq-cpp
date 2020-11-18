@@ -15,20 +15,20 @@
             "scope": "#"
         },
         {
-            "interface": "lo0",
+            "interface": "en0",
             "protocol": "bridge",
             "port": 60777,
+            "scope": "#",
             "discovery": {
                 "mode": "unicast",
-                "from": "127.0.0.1",
-                "to": "127.0.0.1"
+                "from": "192.168.1.1",
+                "to": "192.168.1.254"
             },
             "timeouts": {
                 "discovery": 1000,
                 "acknowledge": 1000,
                 "heartbeat": 60000
-            },
-            "scope": "#"
+            }
         }
     ]
 }

@@ -30,9 +30,9 @@ namespace network {
     namespace constants {
 
         constexpr ip_int null_ip = 0;
-        constexpr ip_int loopback_ip = 0x0100007f;  // 127.0.0.1 in reverse byte order
-        constexpr ip_int extract_subnets = 0x00ffffff;
-        constexpr ip_int extract_msb = 0xff000000;
+        constexpr ip_int loopback_ip = 0x0100007f;    // 127.0.0.1 in reverse byte order
+        constexpr ip_int host_min_mask = 0x01000000;  // 0.0.0.1 in reverse byte order
+        constexpr ip_int host_max_mask = 0xfeffffff;  // 255.255.255.254 in reverse byte order
         constexpr port_int null_port = 0;
         constexpr port_int max_port = 65535;
         constexpr socket_int null_socket = -1;
@@ -128,7 +128,10 @@ class phy {
     const ip_int &ip() const;
     const string ip_string() const;
     const ip_int &netmask() const;
-    ip_int broadcast_address() const;
+    ip_int wildcard() const;
+    ip_int broadcast() const;
+    ip_int host_min() const;
+    ip_int host_max() const;
 };
 
 }  // namespace octopus_mq
