@@ -79,10 +79,8 @@ void server::start_discovery() {
         std::condition_variable delay_cv;
         std::size_t loop_i = 0;
         for (auto& endpoint : _endpoints) {
-            packet_ptr probe = std::make_shared<protocol::v1::probe>(++(endpoint->last_seq_n));
-
             try {
-                send_to(endpoint, probe);
+                send_to(endpoint, std::make_shared<protocol::v1::probe>(++(endpoint->last_seq_n)));
                 endpoint->state = connection_state::discovery_requested;
             } catch (const boost::system::system_error& error) {
                 if (_system_error_handler) _system_error_handler(error.code());
@@ -262,10 +260,8 @@ void server::handle_packet(connection_ptr endpoint, packet_ptr packet) {
 }
 
 void server::handle_probe(connection_ptr endpoint) {
-    packet_ptr probe_ack =
-        std::make_shared<protocol::v1::ack>(packet_type::probe_ack, endpoint->last_seq_n);
-
-    send_to(endpoint, probe_ack);
+    send_to(endpoint,
+            std::make_shared<protocol::v1::ack>(packet_type::probe_ack, endpoint->last_seq_n));
     endpoint->state = connection_state::discovered;
     endpoint->last_sent_packet_type = packet_type::probe_ack;
 }
