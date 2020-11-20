@@ -9,7 +9,7 @@ message::message(message_payload &&payload) : _payload(move(payload)) {}
 message::message(message_payload &&payload, const string &origin_client_id)
     : _payload(move(payload)), _origin_client_id(origin_client_id), _origin_pubopts(0) {}
 
-message::message(message_payload &&payload, const string &topic, const uint8_t pubopts,
+message::message(message_payload &&payload, const string &topic, const std::uint8_t pubopts,
                  const address &origin_addr, const string &origin_clid,
                  const mqtt::version &version, const mqtt_cpp::v5::properties &props)
     : _payload(move(payload)),
@@ -20,7 +20,7 @@ message::message(message_payload &&payload, const string &topic, const uint8_t p
       _origin_pubopts(pubopts),
       _origin_props(props) {}
 
-message::message(message_payload &&payload, const uint8_t pubopts)
+message::message(message_payload &&payload, const std::uint8_t pubopts)
     : _payload(move(payload)), _origin_pubopts(pubopts) {}
 
 void message::payload(const message_payload &payload) { _payload = payload; }
@@ -33,7 +33,7 @@ void message::origin_addr(const address &origin_address) { _origin_address = ori
 
 void message::origin_clid(const string &origin_client_id) { _origin_client_id = origin_client_id; }
 
-void message::pubopts(const uint8_t pubopts) { _origin_pubopts = pubopts; }
+void message::pubopts(const std::uint8_t pubopts) { _origin_pubopts = pubopts; }
 
 void message::props(const mqtt_cpp::v5::properties &props) { _origin_props = props; }
 
@@ -47,7 +47,7 @@ const address &message::origin_addr() const { return _origin_address; }
 
 const string &message::origin_clid() const { return _origin_client_id; }
 
-const uint8_t &message::pubopts() const { return _origin_pubopts; }
+const std::uint8_t &message::pubopts() const { return _origin_pubopts; }
 
 const mqtt_cpp::v5::properties &message::props() const { return _origin_props; }
 
@@ -125,8 +125,8 @@ scope::topic_tokens scope::tokenize_topic_filter(const string &topic_filter) {
         return tokens;
     }
 
-    for (size_t first = 0; first <= topic_filter.size();) {
-        size_t second = topic_filter.find_first_of(slash_sign[0], first);
+    for (std::size_t first = 0; first <= topic_filter.size();) {
+        std::size_t second = topic_filter.find_first_of(slash_sign[0], first);
         // first has index of start of token
         // second has index of end of token + 1;
         if (second == string::npos) second = topic_filter.size();
@@ -160,8 +160,8 @@ scope::topic_tokens scope::tokenize_topic(const string &topic) {
         topic.find_first_of(plus_sign[0]) != string::npos)
         return empty;
 
-    for (size_t first = 0; first <= topic.size();) {
-        size_t second = topic.find_first_of(slash_sign[0], first);
+    for (std::size_t first = 0; first <= topic.size();) {
+        std::size_t second = topic.find_first_of(slash_sign[0], first);
         // first has index of start of token
         // second has index of end of token + 1;
         if (second == string::npos) second = topic.size();
@@ -177,7 +177,7 @@ bool scope::compare_topics(const topic_tokens &filter, const topic_tokens &topic
     if (filter.size() == 1 and filter.front() == hash_sign) return true;
     if (filter.size() > topic.size()) return false;
 
-    size_t i = 0;
+    std::size_t i = 0;
     for (auto &filter_token : filter) {
         if (filter_token == topic[i] or filter_token == plus_sign)
             ++i;

@@ -52,13 +52,13 @@ void control::shutdown_adapters() {
 }
 
 void control::print_adapters() {
-    size_t pool_size = _adapter_pool.size();
-    log::print(log_type::info, "running %lu %s:", pool_size,
-               (pool_size > 1) ? "adapters" : "adapter");
+    std::size_t pool_size = _adapter_pool.size();
+    log::printf(log_type::info, "running %lu %s:", pool_size,
+                (pool_size > 1) ? "adapters" : "adapter");
     for (auto &adapter : _adapter_pool)
         log::print(log_type::more, adapter.first->name() + OCTOMQ_WHITE + " listening on " +
                                        adapter.first->phy().ip_string() + ':' +
-                                       std::to_string(adapter.first->port()) + OCTOMQ_RESET);
+                                       std::to_string(adapter.first->port()));
     log::print_empty_line();
 }
 
@@ -71,7 +71,7 @@ void control::init_signal_handlers() {
 }
 
 void control::signal_handler(int sig) {
-    log::print(log_type::info, "received %s signal, stopping...", supported_signals[sig]);
+    log::printf(log_type::info, "received %s signal, stopping...", supported_signals[sig]);
     _should_stop = true;
 }
 

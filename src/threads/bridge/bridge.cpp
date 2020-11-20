@@ -1,6 +1,6 @@
 #include "threads/bridge/bridge.hpp"
+#include "core/log.hpp"
 
-#include <boost/asio.hpp>
 #include <boost/lexical_cast.hpp>
 
 namespace octopus_mq::bridge {
@@ -10,49 +10,47 @@ using namespace boost::asio;
 implementation::implementation(const octopus_mq::adapter_settings_ptr adapter_settings,
                                message_queue& global_queue)
     : adapter_interface(adapter_settings, global_queue),
-      //_connections_available(false),
-      _settings(std::static_pointer_cast<bridge::adapter_settings>(adapter_settings)) {}
+      _settings(std::static_pointer_cast<bridge::adapter_settings>(adapter_settings)),
+      _verbose(_settings->verbose()) {
+    // Initialize bridge server
+    _server = std::make_unique<server>(
+        ip::udp::endpoint(ip::make_address(_adapter_settings->phy().ip_string()),
+                          boost::lexical_cast<std::uint16_t>(_adapter_settings->port())),
+        _settings->send_port(), _ioc, _settings->transport_mode(), _settings->discovery().format,
+        _settings->discovery().endpoints, _adapter_settings->name(), _verbose);
 
-void implementation::list_discoverer(
-    [[maybe_unused]] const std::chrono::milliseconds& discovery_timeout,
-    [[maybe_unused]] const std::chrono::milliseconds& rescan_timeout, const port_int port,
-    const discovery_list& list) {
-    while (not _discoverer_should_stop) {
-        for (auto& ip : list) {
-            address endpoint_address(ip, port);
-        }
-        if (_discoverer_should_stop) break;
-    }
+    // Setup delays and timeouts
+    _server->set_probe_delay(_settings->timeouts().delay);
+
+    // Setup error handlers
+    _server->set_system_error_handler([this](boost::system::error_code ec) {
+        // 'Operation cancelled' occurs when control thread stops the broker
+        // in midst of some process
+        if (ec != boost::system::errc::operation_canceled)
+            log::print(log_type::error, "system error: " + utility::lowercase_string(ec.message()),
+                       _adapter_settings->name());
+    });
+
+    _server->set_protocol_error_handler([this](protocol::basic_error err) {
+        log::print(log_type::error, err.what(), _adapter_settings->name());
+    });
+
+    // Set message handlers
 }
 
-void implementation::range_discoverer(
-    [[maybe_unused]] const std::chrono::milliseconds& discovery_timeout,
-    [[maybe_unused]] const std::chrono::milliseconds& rescan_timeout, const port_int port,
-    const discovery_range& range) {
-    while (not _discoverer_should_stop) {
-        if (_discoverer_should_stop) break;
-        if (range.from == range.to) break;
-        address endpoint_address(network::constants::null_ip, port);
-    }
+void implementation::worker() {
+    _server->run();
+    _ioc.run();
 }
 
-void implementation::run() {
-    _discoverer_should_stop = false;
-    if (_settings->discovery().format == discovery_endpoints_format::list)
-        _discoverer_thread =
-            std::thread(&implementation::list_discoverer, this, _settings->timeouts().discovery,
-                        _settings->timeouts().rescan, _settings->port(),
-                        std::get<discovery_list>(_settings->discovery().endpoints));
-    else
-        _discoverer_thread =
-            std::thread(&implementation::range_discoverer, this, _settings->timeouts().discovery,
-                        _settings->timeouts().rescan, _settings->port(),
-                        std::get<discovery_range>(_settings->discovery().endpoints));
-}
+void implementation::run() { _thread = std::thread(&implementation::worker, this); }
 
 void implementation::stop() {
-    _discoverer_should_stop = true;
-    if (_discoverer_thread.joinable()) _discoverer_thread.join();
+    if (_thread.joinable()) {
+        _ioc.stop();
+        _server->stop();
+        _thread.join();
+    }
 }
 
 void implementation::inject_publish(const message_ptr message) { (*message); }

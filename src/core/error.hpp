@@ -117,7 +117,8 @@ class invalid_bridge_range : public std::runtime_error {
 class bridge_range_different_nets : public std::runtime_error {
    public:
     explicit bridge_range_different_nets()
-        : std::runtime_error("bridge adapter: cannot use address range from different networks.") {}
+        : std::runtime_error(
+              "bridge adapter: cannot use endpoint address from different network.") {}
 };
 
 class bridge_discovery_not_set : public std::runtime_error {

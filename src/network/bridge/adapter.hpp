@@ -24,15 +24,19 @@ namespace adapter {
         constexpr char from[] = "from";
         constexpr char to[] = "to";
         constexpr char endpoints[] = "endpoints";
+        constexpr char send_port[] = "send_port";
+        constexpr char delay[] = "delay";
         constexpr char timeouts[] = "timeouts";
         constexpr char acknowledge[] = "acknowledge";
         constexpr char heartbeat[] = "heartbeat";
         constexpr char rescan[] = "rescan";
+        constexpr char verbose[] = "verbose";
 
     }  // namespace field_name
 
     namespace default_timeouts {
 
+        constexpr std::chrono::milliseconds delay = 100ms;
         constexpr std::chrono::milliseconds discovery = 10000ms;
         constexpr std::chrono::milliseconds acknowledge = 1000ms;
         constexpr std::chrono::milliseconds heartbeat = 60000ms;
@@ -67,6 +71,7 @@ class discovery_settings {
 
 class timeouts {
    public:
+    std::chrono::milliseconds delay;
     std::chrono::milliseconds discovery;
     std::chrono::milliseconds acknowledge;
     std::chrono::milliseconds heartbeat;
@@ -76,6 +81,9 @@ class timeouts {
 class adapter_settings : public octopus_mq::adapter_settings {
     discovery_settings _discovery_settings;
     timeouts _timeouts;
+    transport_mode _transport_mode;
+    port_int _send_port;
+    bool _verbose;
 
    public:
     adapter_settings(const nlohmann::json& json);
@@ -83,13 +91,17 @@ class adapter_settings : public octopus_mq::adapter_settings {
     // This call will pass discovery settings for unicast and set the mode.
     // Default discovery mode is broadcast.
     void discovery(const discovery_endpoints_format& format, const discovery_endpoints& endpoints);
-    void timeouts(const std::chrono::milliseconds& discovery,
+    void timeouts(const std::chrono::milliseconds& delay,
+                  const std::chrono::milliseconds& discovery,
                   const std::chrono::milliseconds& acknowledge,
                   const std::chrono::milliseconds& heartbeat,
                   const std::chrono::milliseconds& rescan);
 
     const discovery_settings& discovery() const;
-    const bridge::timeouts& timeouts() const;
+    const class timeouts& timeouts() const;
+    const transport_mode& transport_mode() const;
+    const port_int& send_port() const;
+    const bool& verbose() const;
 };
 
 using adapter_settings_ptr = std::shared_ptr<bridge::adapter_settings>;

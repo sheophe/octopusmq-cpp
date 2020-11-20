@@ -33,8 +33,6 @@
 
 namespace octopus_mq {
 
-using std::string;
-
 enum class log_type { info, note, warning, error, fatal, more };
 
 class log {
@@ -43,15 +41,15 @@ class log {
     static constexpr char _version_string[] = OCTOMQ_VERSION_STRING;
     static inline long long _start_timestamp = 0;
     static inline bool _relative_timestamp = false;
-    static inline string _last_adapter_name;
+    static inline std::string _last_adapter_name;
 
-    static inline const std::map<log_type, string> _log_prefix = {
-        { log_type::info, "" },
+    static inline const std::map<log_type, std::string> _log_prefix = {
+        { log_type::info, std::string() },
         { log_type::note, OCTOMQ_CYAN OCTOMQ_BOLD "note: " OCTOMQ_RESET OCTOMQ_BOLD },
         { log_type::warning, OCTOMQ_YELLOW OCTOMQ_BOLD "warning: " OCTOMQ_RESET OCTOMQ_BOLD },
         { log_type::error, OCTOMQ_RED OCTOMQ_BOLD "error: " OCTOMQ_RESET OCTOMQ_BOLD },
         { log_type::fatal, OCTOMQ_RED OCTOMQ_BOLD "fatal: " OCTOMQ_RESET OCTOMQ_BOLD },
-        { log_type::more, "" }
+        { log_type::more, std::string() }
     };
 
     static void print_time(const log_type &type);
@@ -60,19 +58,25 @@ class log {
     static void print_started(const bool daemon = false);
     static void print_stopped(const bool error = false);
     static void print_empty_line();
-    static void print(const log_type &type, const char *format, ...);
-    static void print(const log_type &type, const string &message);
-    static void print_event(const string &adapter_name, const address &remote_address,
-                            const string &client_id, const network_event_type &event_type,
-                            const string &action);
-    static void print_action(const network_event_type &event_type, const string &action,
-                             const class address &remote, const string &client_id);
+    static void printf(const log_type &type, const char *format, ...);
+    static void print(const log_type &type, const std::string &message,
+                      const std::string &adapter_name = std::string());
+    static void print_event(const std::string &adapter_name, const std::string &remote_address,
+                            const std::string &client_id, const network_event_type &event_type,
+                            const std::string &action);
+    static void print_action(const network_event_type &event_type, const std::string &action,
+                             const std::string &remote, const std::string &client_id);
     static void print_help();
     static const char *version_string();
-
-    // Utility functions
-    static string size_to_string(const size_t &size);
 };
+
+// Utility std::string functions
+namespace utility {
+
+    std::string size_string(const std::size_t &size);
+    std::string lowercase_string(const std::string &input_string);
+
+}  // namespace utility
 
 }  // namespace octopus_mq
 

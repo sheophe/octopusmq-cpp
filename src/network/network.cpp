@@ -37,8 +37,27 @@ ip_int address::to_ip(const string &ip_string) {
         return network::constants::null_ip;
 }
 
+string address::ip_string(const ip_int &ip) {
+    char addr_str[INET_ADDRSTRLEN];
+    struct in_addr ia;
+    memset(&ia, 0, sizeof(ia));
+    ia.s_addr = (in_addr_t)ip;
+    if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
+        return string(addr_str);
+    else
+        return string();
+}
+
+void address::increment_ip(ip_int &ip) {
+    if (ip != network::constants::max_ip) ip = ntohl(htonl(ip) + 1);
+}
+
+void address::decrement_ip(ip_int &ip) {
+    if (ip != network::constants::null_ip) ip = ntohl(htonl(ip) - 1);
+}
+
 void address::address_string(const string &address_string) {
-    size_t pos = address_string.find_last_of(':');
+    std::size_t pos = address_string.find_last_of(':');
     if (pos != string::npos) {
         string ip = address_string.substr(0, pos);
         string port = address_string.substr(pos + 1);
@@ -65,7 +84,7 @@ string address::to_string() const {
     ia.s_addr = (in_addr_t)_ip;
     if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) == nullptr)
         throw std::runtime_error("[socket] cannot convert address to string (ip conversion error)");
-    size_t pos = strlen(addr_str);
+    std::size_t pos = strlen(addr_str);
     if (snprintf(addr_str + pos, sizeof(addr_str) - pos, ":%d", _port) < 0)
         throw std::runtime_error(
             "[socket] cannot convert address to string (port conversion error)");
@@ -165,18 +184,13 @@ const string &phy::name() const { return _name; }
 
 const ip_int &phy::ip() const { return _ip; }
 
-const string phy::ip_string() const {
-    char addr_str[INET_ADDRSTRLEN];
-    struct in_addr ia;
-    memset(&ia, 0, sizeof(ia));
-    ia.s_addr = (in_addr_t)_ip;
-    if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
-        return string(addr_str);
-    else
-        return string();
-}
+const string phy::ip_string() const { return address::ip_string(_ip); }
+
+const string phy::broadcast_string() const { return address::ip_string(_ip | ~_netmask); }
 
 const ip_int &phy::netmask() const { return _netmask; }
+
+ip_int phy::net() const { return _ip & _netmask; }
 
 ip_int phy::wildcard() const { return ~_netmask; }
 

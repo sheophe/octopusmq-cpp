@@ -1,4 +1,5 @@
 .DS_Store
+.vscode
 build
 src/threads/dds/message
-.vscode
+octopus_*.json

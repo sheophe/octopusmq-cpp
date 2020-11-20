@@ -18,13 +18,11 @@
 
 namespace octopus_mq {
 
-using std::string, std::shared_ptr;
-
 class adapter_settings_factory {
    public:
     static adapter_settings_ptr from_json(const nlohmann::json &json);
 
-    static const protocol_type &protocol_from_name(const string &name);
+    static const protocol_type &protocol_from_name(const std::string &name);
 };
 
 class adapter_interface_factory {

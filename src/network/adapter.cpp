@@ -124,9 +124,9 @@ bool message_queue::wait_and_pop(std::chrono::milliseconds timeout,
         return false;
 }
 
-size_t message_queue::wait_and_pop_all(std::chrono::milliseconds timeout, adapter_pool &pool) {
+std::size_t message_queue::wait_and_pop_all(std::chrono::milliseconds timeout, adapter_pool &pool) {
     std::unique_lock<std::mutex> queue_lock(_queue_mutex);
-    size_t popped = 0;
+    std::size_t popped = 0;
     if (_queue_cv.wait_for(queue_lock, timeout, [this] { return not _queue.empty(); })) {
         popped = _queue.size();
         while (not _queue.empty()) {

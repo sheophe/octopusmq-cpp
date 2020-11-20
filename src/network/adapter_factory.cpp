@@ -9,7 +9,7 @@
 
 namespace octopus_mq {
 
-static inline const std::map<string, protocol_type> _protocol_from_name = {
+static inline const std::map<std::string, protocol_type> _protocol_from_name = {
     { network::protocol_name::bridge, protocol_type::bridge },
     { network::protocol_name::dds, protocol_type::dds },
     { network::protocol_name::mqtt, protocol_type::mqtt }
@@ -21,7 +21,7 @@ adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &j
 
     const nlohmann::json &item = json[adapter::field_name::protocol];
     if (item.is_string()) {
-        string protocol_name = item.get<string>();
+        std::string protocol_name = item.get<std::string>();
         if (auto iter = _protocol_from_name.find(protocol_name);
             iter != _protocol_from_name.end()) {
             const protocol_type protocol = iter->second;

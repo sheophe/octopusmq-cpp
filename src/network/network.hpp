@@ -17,22 +17,27 @@ enum class transport_type { udp, tcp, tls, websocket, tls_websocket };
 
 enum class network_event_type { send, receive };
 
-using port_int = uint32_t;
+using port_int = std::uint16_t;
 
-using ip_int = uint32_t;
+using ip_int = std::uint32_t;
 
 using socket_int = int32_t;
 
 using network_payload = std::vector<char>;
+
+using network_payload_ptr = std::shared_ptr<network_payload>;
 
 namespace network {
 
     namespace constants {
 
         constexpr ip_int null_ip = 0;
-        constexpr ip_int loopback_ip = 0x0100007f;    // 127.0.0.1 in reverse byte order
-        constexpr ip_int host_min_mask = 0x01000000;  // 0.0.0.1 in reverse byte order
-        constexpr ip_int host_max_mask = 0xfeffffff;  // 255.255.255.254 in reverse byte order
+        constexpr ip_int loopback_ip = 0x0100007f;  // 127.0.0.1 in reverse byte order
+        constexpr ip_int loopback_ip_min = loopback_ip;
+        constexpr ip_int loopback_ip_max = 0xfeffff7f;  // 127.255.255.254 in reverse byte order
+        constexpr ip_int host_min_mask = 0x01000000;    // 0.0.0.1 in reverse byte order
+        constexpr ip_int host_max_mask = 0xfeffffff;    // 255.255.255.254 in reverse byte order
+        constexpr ip_int max_ip = 0xffffffff;
         constexpr port_int null_port = 0;
         constexpr port_int max_port = 65535;
         constexpr socket_int null_socket = -1;
@@ -52,9 +57,9 @@ namespace network {
 
     namespace transport_mode_name {
 
-        constexpr char unicast[] = "unicast";
-        constexpr char multicast[] = "multicast";
         constexpr char broadcast[] = "broadcast";
+        constexpr char multicast[] = "multicast";
+        constexpr char unicast[] = "unicast";
 
     }  // namespace transport_mode_name
 
@@ -97,7 +102,11 @@ class address {
     void port(const port_int &port);
     void ip(const ip_int &ip);
     void ip(const string &ip);
+
     static ip_int to_ip(const string &ip_string);
+    static string ip_string(const ip_int &ip);
+    static void increment_ip(ip_int &ip);
+    static void decrement_ip(ip_int &ip);
 
     const port_int &port() const;
     const ip_int &ip() const;
@@ -127,7 +136,10 @@ class phy {
     const string &name() const;
     const ip_int &ip() const;
     const string ip_string() const;
+    const string broadcast_string() const;
+
     const ip_int &netmask() const;
+    ip_int net() const;
     ip_int wildcard() const;
     ip_int broadcast() const;
     ip_int host_min() const;

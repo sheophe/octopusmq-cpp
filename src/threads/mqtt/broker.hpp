@@ -1,14 +1,6 @@
 #ifndef OCTOMQ_MQTT_BROKER_H_
 #define OCTOMQ_MQTT_BROKER_H_
 
-#include "network/adapter.hpp"
-#include "network/message.hpp"
-#include "network/mqtt/adapter.hpp"
-#include "network/network.hpp"
-#include "threads/mqtt/config.hpp"
-
-#include "mqtt_server_cpp.hpp"
-
 #include <algorithm>
 #include <memory>
 #include <mutex>
@@ -20,6 +12,14 @@
 #include <boost/multi_index/ordered_index.hpp>
 #include <boost/multi_index/member.hpp>
 #include <boost/static_assert.hpp>
+
+#include "network/adapter.hpp"
+#include "network/message.hpp"
+#include "network/mqtt/adapter.hpp"
+#include "network/network.hpp"
+#include "threads/mqtt/config.hpp"
+
+#include "mqtt_server_cpp.hpp"
 
 namespace octopus_mq::mqtt {
 

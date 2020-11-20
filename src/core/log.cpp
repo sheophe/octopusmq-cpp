@@ -1,5 +1,6 @@
 #include "core/log.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdarg>
 #include <iomanip>
@@ -28,14 +29,14 @@ void log::print_time(const log_type &type) {
 }
 
 void log::print_started(const bool daemon) {
-    log::print(log_type::info, "%s%soctopusMQ %s started%s.%s", OCTOMQ_ICON, OCTOMQ_BOLD,
-               log::version_string(), (daemon ? " as a daemon" : ""), OCTOMQ_RESET);
+    log::printf(log_type::info, "%s%soctopusMQ %s started%s.%s", OCTOMQ_ICON, OCTOMQ_BOLD,
+                log::version_string(), (daemon ? " as a daemon" : ""), OCTOMQ_RESET);
 }
 
 void log::print_stopped(const bool error) {
     if (error)
-        log::print(log_type::info, "%s%sstopped due to an error.%s", OCTOMQ_RED, OCTOMQ_BOLD,
-                   OCTOMQ_RESET);
+        log::printf(log_type::info, "%s%sstopped due to an error.%s", OCTOMQ_RED, OCTOMQ_BOLD,
+                    OCTOMQ_RESET);
     else
         log::print(log_type::info, "stopped.");
 }
@@ -45,7 +46,7 @@ void log::print_empty_line() {
     std::cout << std::endl;
 }
 
-void log::print(const log_type &type, const char *format, ...) {
+void log::printf(const log_type &type, const char *format, ...) {
     if ((format != nullptr) and (*format != '\0')) {
         std::lock_guard<std::mutex> log_lock(_mutex);
         print_time(type);
@@ -57,29 +58,34 @@ void log::print(const log_type &type, const char *format, ...) {
     }
 }
 
-void log::print(const log_type &type, const string &message) {
+void log::print(const log_type &type, const std::string &message, const std::string &adapter_name) {
     if (not message.empty()) {
         std::lock_guard<std::mutex> log_lock(_mutex);
+        if (not adapter_name.empty() and _last_adapter_name != adapter_name) {
+            print_time(log_type::more);
+            std::cout << OCTOMQ_BOLD << std::left << std::setw(35) << std::setfill(' ')
+                      << adapter_name << OCTOMQ_RESET << std::endl;
+            _last_adapter_name = adapter_name;
+        }
         print_time(type);
         std::cout << _log_prefix.find(type)->second << message << OCTOMQ_RESET << std::endl;
     }
 }
 
-void log::print_action(const network_event_type &event_type, const string &action,
-                       const class address &remote, const string &client_id) {
+void log::print_action(const network_event_type &event_type, const std::string &action,
+                       const std::string &remote, const std::string &client_id) {
     print_time(log_type::info);
     std::cout << OCTOMQ_RESET << std::right << std::setw(18) << std::setfill(' ') << action
-              << (event_type == network_event_type::receive ? " <-- " : " --> ")
-              << remote.to_string();
+              << (event_type == network_event_type::receive ? " <-- " : " --> ") << remote;
     if (client_id.empty())
         std::cout << std::endl;
     else
         std::cout << OCTOMQ_WHITE << " (" << client_id << ')' << OCTOMQ_RESET << std::endl;
 }
 
-void log::print_event(const string &adapter_name, const address &remote_address,
-                      const string &client_id, const network_event_type &event_type,
-                      const string &action) {
+void log::print_event(const std::string &adapter_name, const std::string &remote_address,
+                      const std::string &client_id, const network_event_type &event_type,
+                      const std::string &action) {
     std::lock_guard<std::mutex> log_lock(_mutex);
     if (_last_adapter_name != adapter_name) {
         print_time(log_type::more);
@@ -103,7 +109,7 @@ void log::print_help() {
 
 const char *log::version_string() { return _version_string; }
 
-string log::size_to_string(const size_t &size) {
+std::string utility::size_string(const std::size_t &size) {
     std::ostringstream str_stream;
     if (size < 0x400)
         str_stream << size << " B";
@@ -117,6 +123,13 @@ string log::size_to_string(const size_t &size) {
         str_stream << std::fixed << std::setprecision(1) << (static_cast<double>(size) / 0x40000000)
                    << " GB";
     return str_stream.str();
+}
+
+std::string utility::lowercase_string(const std::string &input_string) {
+    std::string lowercase = input_string;
+    std::transform(lowercase.begin(), lowercase.end(), lowercase.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return lowercase;
 }
 
 }  // namespace octopus_mq
