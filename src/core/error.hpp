@@ -142,6 +142,13 @@ class bridge_malformed_packet_constructed : public std::runtime_error {
         : std::runtime_error("bridge adapter: tried to construct malformed packet") {}
 };
 
+class bridge_recursive_config : public std::runtime_error {
+   public:
+    explicit bridge_recursive_config()
+        : std::runtime_error(
+              "bridge adapter: settings imply recursive bridge, which is impossible.") {}
+};
+
 }  // namespace octopus_mq
 
 #endif

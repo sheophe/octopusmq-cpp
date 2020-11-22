@@ -13,8 +13,6 @@
 
 namespace octopus_mq::bridge {
 
-using namespace std::chrono_literals;
-
 namespace adapter {
 
     namespace field_name {
@@ -30,11 +28,12 @@ namespace adapter {
         constexpr char acknowledge[] = "acknowledge";
         constexpr char heartbeat[] = "heartbeat";
         constexpr char rescan[] = "rescan";
-        constexpr char verbose[] = "verbose";
 
     }  // namespace field_name
 
     namespace default_timeouts {
+
+        using namespace std::chrono_literals;
 
         constexpr std::chrono::milliseconds delay = 100ms;
         constexpr std::chrono::milliseconds discovery = 10000ms;
@@ -45,8 +44,6 @@ namespace adapter {
     }  // namespace default_timeouts
 
 }  // namespace adapter
-
-using std::string;
 
 enum class discovery_endpoints_format { list, range };
 
@@ -83,7 +80,6 @@ class adapter_settings : public octopus_mq::adapter_settings {
     timeouts _timeouts;
     transport_mode _transport_mode;
     port_int _send_port;
-    bool _verbose;
 
    public:
     adapter_settings(const nlohmann::json& json);
@@ -101,7 +97,6 @@ class adapter_settings : public octopus_mq::adapter_settings {
     const class timeouts& timeouts() const;
     const transport_mode& transport_mode() const;
     const port_int& send_port() const;
-    const bool& verbose() const;
 };
 
 using adapter_settings_ptr = std::shared_ptr<bridge::adapter_settings>;

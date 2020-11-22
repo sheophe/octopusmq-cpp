@@ -11,8 +11,6 @@
 
 namespace octopus_mq::mqtt {
 
-using std::string;
-
 class adapter_settings : public octopus_mq::adapter_settings {
     transport_type _transport;
 
@@ -20,13 +18,13 @@ class adapter_settings : public octopus_mq::adapter_settings {
     address _remote_address;
     adapter_role _role;
 
-    static inline const std::map<string, adapter_role> _role_from_name = {
+    static inline const std::map<std::string, adapter_role> _role_from_name = {
         { adapter_role_name::broker, adapter_role::broker },
         { adapter_role_name::client, adapter_role::client }
     };
 #endif
 
-    static inline const std::map<string, transport_type> _transport_from_name = {
+    static inline const std::map<std::string, transport_type> _transport_from_name = {
         { network::transport_name::tcp, transport_type::tcp },
         { network::transport_name::websocket, transport_type::websocket },
 #ifdef OCTOMQ_ENABLE_TLS
@@ -39,13 +37,13 @@ class adapter_settings : public octopus_mq::adapter_settings {
     adapter_settings(const nlohmann::json &json);
 
     void transport(const transport_type &transport);
-    void transport(const string &transport);
+    void transport(const std::string &transport);
 
     const transport_type &transport() const;
 
 #ifdef OCTOMQ_ENABLE_MQTT_CLIENT
     void role(const adapter_role &role);
-    void role(const string &role);
+    void role(const std::string &role);
 
     const adapter_role &role() const;
 #endif

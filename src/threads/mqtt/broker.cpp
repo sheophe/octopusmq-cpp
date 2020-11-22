@@ -1,35 +1,12 @@
 #include "threads/mqtt/broker.hpp"
 #include "core/log.hpp"
+#include "core/utility.hpp"
 
 #include <boost/asio/ip/address.hpp>
 
 namespace octopus_mq::mqtt {
 
-using namespace boost::asio;
-
-static string boost_error_to_string(const mqtt_cpp::error_code& error) {
-    switch (error.value()) {
-        case boost::asio::error::eof:
-            return "connection lost";
-        case boost::asio::error::connection_aborted:
-            return "connection aborted";
-        case boost::asio::error::connection_refused:
-            return "connection refused";
-        case boost::asio::error::connection_reset:
-            return "connection reset";
-        case boost::asio::error::broken_pipe:
-            return "broken pipe";
-        case boost::asio::error::host_unreachable:
-            return "no route to host";
-        case boost::asio::error::message_size:
-            return "message too long";
-        case boost::asio::error::network_down:
-            return "network is down";
-        default: {
-            return utility::lowercase_string(error.message());
-        }
-    }
-}
+using namespace boost;
 
 template <typename Server>
 inline void broker<Server>::close_connection(connection_sp const& con) {
@@ -67,18 +44,16 @@ template <typename Server>
 broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                        message_queue& global_queue)
     : adapter_interface(adapter_settings, global_queue) {
-    // When octopus_mq::phy gets the name defined in network::constants::any_interface
+    // When octopus_mq::phy gets the name defined in network::constants::any_interface_name
     // instead of correct interface name (which means any interface should be listened),
     // it stores address defined in network::constants::null_ip as an interface IP address.
     if (_adapter_settings->phy().ip() == network::constants::null_ip)
         _server = std::make_unique<Server>(
-            ip::tcp::endpoint(ip::tcp::v4(),
-                              boost::lexical_cast<std::uint16_t>(_adapter_settings->port())),
-            _ioc);
+            asio::ip::tcp::endpoint(asio::ip::tcp::v4(), _adapter_settings->port()), _ioc);
     else
         _server = std::make_unique<Server>(
-            ip::tcp::endpoint(ip::make_address(_adapter_settings->phy().ip_string()),
-                              boost::lexical_cast<std::uint16_t>(_adapter_settings->port())),
+            asio::ip::tcp::endpoint(asio::ip::address_v4(_adapter_settings->phy().ip()),
+                                    _adapter_settings->port()),
             _ioc);
 
     _server->set_error_handler([this](mqtt_cpp::error_code ec) {
@@ -106,20 +81,17 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         // Set connection level handlers (lower than MQTT)
         ep.set_close_handler([this, wp]() {
-            log::print(log_type::info, "connection closed.", _adapter_settings->name());
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             this->close_connection(sp);
         });
 
         ep.set_error_handler([this, wp](mqtt_cpp::error_code ec) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             // Connection may be already closed by close_handler
             // In this case socket error may pop up, but that is expected
             if (_connections.find(sp) != _connections.end()) {
                 std::string message =
-                    boost_error_to_string(ec) + " at " + _meta[sp].address.to_string();
+                    utility::boost_error_message(ec) + " at " + _meta[sp].address.to_string();
                 if (not _meta[sp].client_id.empty()) message += " (" + _meta[sp].client_id + ").";
                 log::print(log_type::error, message, _adapter_settings->name());
                 this->close_connection(sp);
@@ -128,7 +100,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         ep.set_pingreq_handler([this, wp]() {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::pingreq);
@@ -145,7 +116,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                           mqtt_cpp::optional<mqtt_cpp::will>,
                                           bool /*clean_session*/, std::uint16_t /*keep_alive*/) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             this->_connections.insert(sp);
             this->_meta[sp].client_id = client_id;
             this->_meta[sp].protocol_version = version::v3;
@@ -160,7 +130,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         ep.set_disconnect_handler([this, wp]() {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::disconnect);
@@ -170,7 +139,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         ep.set_puback_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::puback);
@@ -179,7 +147,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         ep.set_pubrec_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::pubrec);
@@ -188,7 +155,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         ep.set_pubrel_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::pubrel);
@@ -197,7 +163,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
 
         ep.set_pubcomp_handler([this, wp](packet_id_t /*packet_id*/) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::pubcomp);
@@ -208,11 +173,20 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                           mqtt_cpp::publish_options pubopts,
                                           mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              std::string(packet_names::publish) + " (" +
                                  utility::size_string(contents.size()) + ')');
+            if (scope::is_internal(topic_name)) {
+                log::print(log_type::error, "publish to internal topic is forbidden.",
+                           _adapter_settings->name());
+                sp->disconnect();
+                log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
+                                 _meta[sp].client_id, network_event_type::send,
+                                 packet_names::disconnect);
+                this->close_connection(sp);
+                return true;
+            }
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             auto const& idx = this->_subs.template get<topic_tag>();
             for (auto& sub : idx) {
@@ -237,7 +211,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 packet_id_t packet_id,
                 std::vector<std::tuple<mqtt_cpp::buffer, mqtt_cpp::subscribe_options>> entries) {
                 auto sp = wp.lock();
-                BOOST_ASSERT(sp);
                 log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                                  _meta[sp].client_id, network_event_type::receive,
                                  packet_names::subscribe);
@@ -263,7 +236,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
         ep.set_unsubscribe_handler([this, wp](packet_id_t packet_id,
                                               std::vector<mqtt_cpp::buffer> topics) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::unsubscribe);
@@ -284,7 +256,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                       mqtt_cpp::optional<mqtt_cpp::will>, bool /*clean_start*/,
                                       std::uint16_t /*keep_alive*/, mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             this->_connections.insert(sp);
             this->_meta[sp].client_id = client_id;
             this->_meta[sp].protocol_version = version::v5;
@@ -301,7 +272,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
             [this, wp](mqtt_cpp::v5::disconnect_reason_code /*reason_code*/,
                        mqtt_cpp::v5::properties) {
                 auto sp = wp.lock();
-                BOOST_ASSERT(sp);
                 log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                                  _meta[sp].client_id, network_event_type::receive,
                                  packet_names::disconnect);
@@ -313,7 +283,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                             mqtt_cpp::v5::puback_reason_code /*reason_code*/,
                                             mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::puback);
@@ -324,7 +293,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                             mqtt_cpp::v5::pubrec_reason_code /*reason_code*/,
                                             mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::pubrec);
@@ -335,7 +303,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                             mqtt_cpp::v5::pubrel_reason_code /*reason_code*/,
                                             mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::pubrel);
@@ -346,7 +313,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                              mqtt_cpp::v5::pubcomp_reason_code /*reason_code*/,
                                              mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::pubcomp);
@@ -358,11 +324,20 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                              mqtt_cpp::buffer topic_name, mqtt_cpp::buffer contents,
                                              mqtt_cpp::v5::properties props) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              std::string(packet_names::publish) + " (" +
                                  utility::size_string(contents.size()) + ')');
+            if (scope::is_internal(topic_name)) {
+                log::print(log_type::error, "publish to internal topic is forbidden.",
+                           _adapter_settings->name());
+                sp->disconnect(mqtt_cpp::v5::disconnect_reason_code::topic_name_invalid);
+                log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
+                                 _meta[sp].client_id, network_event_type::send,
+                                 packet_names::disconnect);
+                this->close_connection(sp);
+                return true;
+            }
             std::unique_lock<std::mutex> _subs_lock(this->_subs_mutex);
             auto const& idx = this->_subs.template get<topic_tag>();
             for (auto& sub : idx) {
@@ -393,7 +368,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                 std::vector<std::tuple<mqtt_cpp::buffer, mqtt_cpp::subscribe_options>> entries,
                 mqtt_cpp::v5::properties) {
                 auto sp = wp.lock();
-                BOOST_ASSERT(sp);
                 log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                                  _meta[sp].client_id, network_event_type::receive,
                                  packet_names::subscribe);
@@ -423,7 +397,6 @@ broker<Server>::broker(const octopus_mq::adapter_settings_ptr adapter_settings,
                                                  std::vector<mqtt_cpp::buffer> topics,
                                                  mqtt_cpp::v5::properties) {
             auto sp = wp.lock();
-            BOOST_ASSERT(sp);
             log::print_event(_adapter_settings->name(), _meta[sp].address.to_string(),
                              _meta[sp].client_id, network_event_type::receive,
                              packet_names::unsubscribe);

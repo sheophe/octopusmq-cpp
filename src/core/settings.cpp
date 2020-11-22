@@ -34,17 +34,17 @@ void settings::parse(adapter_pool &adapter_pool) {
     }
 }
 
-void settings::load(const string &file_name, adapter_pool &adapter_pool) {
+void settings::load(const std::string &file_name, adapter_pool &adapter_pool) {
     if (file_name.empty()) throw std::runtime_error("empty configuration file name.");
     if (std::ifstream ifs = std::ifstream(file_name, std::fstream::in); not ifs.is_open())
-        throw std::runtime_error("cannot open configuration file: " + string(strerror(errno)) +
+        throw std::runtime_error("cannot open configuration file: " + std::string(strerror(errno)) +
                                  ": " + file_name);
     else {
         try {
             _settings_json = nlohmann::json::parse(ifs);
             settings::parse(adapter_pool);
         } catch (const std::runtime_error &re) {
-            throw std::runtime_error("settings error: " + string(re.what()));
+            throw std::runtime_error("settings error: " + std::string(re.what()));
         }
     }
 }

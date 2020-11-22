@@ -48,6 +48,11 @@ class invalid_sequence_number final : public invalid_packet {
     invalid_sequence_number() : invalid_packet("received packet has invalid sequence number.") {}
 };
 
+class nack_does_not_exist final : public invalid_packet {
+   public:
+    nack_does_not_exist() : invalid_packet("nack does not exist for requested type of packet.") {}
+};
+
 // Final classes for invalid_sequence
 class invalid_packet_sequence final : public invalid_sequence {
    public:
@@ -61,6 +66,14 @@ class out_of_order final : public invalid_sequence {
     out_of_order(const std::string& packet_type_name, const std::string& sender_address)
         : invalid_sequence("out of order '" + packet_type_name + "' packet received from " +
                            sender_address) {}
+};
+
+// Other
+class ipayload_stream_out_of_range : public std::out_of_range {
+   public:
+    ipayload_stream_out_of_range(const std::string& type_name)
+        : std::out_of_range("cannot read value of type \"" + type_name +
+                            "\" from network payload.") {}
 };
 
 }  // namespace octopus_mq::bridge::protocol

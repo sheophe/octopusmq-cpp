@@ -11,12 +11,10 @@
 
 namespace octopus_mq::dds {
 
-using std::string;
-
 class adapter_settings : public octopus_mq::adapter_settings {
     transport_type _transport;
 
-    static inline const std::map<string, transport_type> _transport_from_name = {
+    static inline const std::map<std::string, transport_type> _transport_from_name = {
         { network::transport_name::udp, transport_type::udp },
         { network::transport_name::tcp, transport_type::tcp }
     };
@@ -25,7 +23,7 @@ class adapter_settings : public octopus_mq::adapter_settings {
     adapter_settings(const nlohmann::json &json);
 
     void transport(const transport_type &transport);
-    void transport(const string &transport);
+    void transport(const std::string &transport);
 
     const transport_type &transport() const;
 };

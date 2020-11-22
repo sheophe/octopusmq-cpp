@@ -15,56 +15,49 @@
 #include "core/error.hpp"
 #include "core/log.hpp"
 
-#define OCTOMQ_MAX_PORT_STRLEN (6)
-#define OCTOMQ_MAX_HOSTNAME_LEN (256)
-#define OCTOMQ_RECV_BUFFER_SIZE (65536)
-
 namespace octopus_mq {
+
+ip_int ip::from_string(const std::string &ip_string) {
+    struct in_addr ia;
+    if (inet_pton(AF_INET, ip_string.c_str(), &ia))
+        return ntohl(ia.s_addr);
+    else
+        return network::constants::null_ip;
+}
+
+std::string ip::to_string(const ip_int &ip) {
+    char addr_str[INET_ADDRSTRLEN];
+    struct in_addr ia;
+    memset(&ia, 0, sizeof(ia));
+    ia.s_addr = (in_addr_t)htonl(ip);
+    if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
+        return std::string(addr_str);
+    else
+        return std::string();
+}
+
+bool ip::is_loopback(const ip_int &ip) {
+    return (ip & network::constants::loopback_netmask) == network::constants::loopback_net;
+}
 
 address::address() : _ip(network::constants::null_ip), _port(network::constants::null_port) {}
 
 address::address(const ip_int &ip, const port_int &port) : _ip(ip), _port(port) {}
 
-address::address(const string &ip, const port_int &port) : _ip(to_ip(ip)), _port(port) {}
+address::address(const std::string &ip, const port_int &port)
+    : _ip(ip::from_string(ip)), _port(port) {}
 
-address::address(const string &address) { address_string(address); }
+address::address(const std::string &address) { from_string(address); }
 
-ip_int address::to_ip(const string &ip_string) {
-    struct in_addr ia;
-    if (inet_pton(AF_INET, ip_string.c_str(), &ia))
-        return (ip_int)ia.s_addr;
-    else
-        return network::constants::null_ip;
-}
-
-string address::ip_string(const ip_int &ip) {
-    char addr_str[INET_ADDRSTRLEN];
-    struct in_addr ia;
-    memset(&ia, 0, sizeof(ia));
-    ia.s_addr = (in_addr_t)ip;
-    if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) != nullptr)
-        return string(addr_str);
-    else
-        return string();
-}
-
-void address::increment_ip(ip_int &ip) {
-    if (ip != network::constants::max_ip) ip = ntohl(htonl(ip) + 1);
-}
-
-void address::decrement_ip(ip_int &ip) {
-    if (ip != network::constants::null_ip) ip = ntohl(htonl(ip) - 1);
-}
-
-void address::address_string(const string &address_string) {
+void address::from_string(const std::string &address_string) {
     std::size_t pos = address_string.find_last_of(':');
-    if (pos != string::npos) {
-        string ip = address_string.substr(0, pos);
-        string port = address_string.substr(pos + 1);
-        _ip = ip.empty() ? network::constants::null_ip : to_ip(ip);
+    if (pos != std::string::npos) {
+        std::string ip = address_string.substr(0, pos);
+        std::string port = address_string.substr(pos + 1);
+        _ip = ip.empty() ? network::constants::null_ip : ip::from_string(ip);
         _port = port.empty() ? network::constants::null_port : stoi(port);
     } else if (address_string.size() >= sizeof("0.0.0.0")) {
-        _ip = to_ip(address_string);
+        _ip = ip::from_string(address_string);
         _port = network::constants::null_port;
     } else if (address_string.size() <= sizeof("65535")) {
         _ip = network::constants::null_ip;
@@ -76,19 +69,19 @@ void address::port(const port_int &port) { _port = port; }
 
 void address::ip(const ip_int &ip) { _ip = ip; }
 
-string address::to_string() const {
-    char addr_str[INET_ADDRSTRLEN + 1 + OCTOMQ_MAX_PORT_STRLEN];
+std::string address::to_string() const {
+    char addr_str[INET_ADDRSTRLEN + 1 + sizeof("65535")];
     struct in_addr ia;
     memset(&addr_str, 0, sizeof(addr_str));
     memset(&ia, 0, sizeof(ia));
-    ia.s_addr = (in_addr_t)_ip;
+    ia.s_addr = (in_addr_t)htonl(_ip);
     if (inet_ntop(AF_INET, &ia, addr_str, INET_ADDRSTRLEN) == nullptr)
         throw std::runtime_error("[socket] cannot convert address to string (ip conversion error)");
     std::size_t pos = strlen(addr_str);
     if (snprintf(addr_str + pos, sizeof(addr_str) - pos, ":%d", _port) < 0)
         throw std::runtime_error(
             "[socket] cannot convert address to string (port conversion error)");
-    return string(addr_str);
+    return std::string(addr_str);
 }
 
 const port_int &address::port() const { return _port; }
@@ -99,18 +92,18 @@ bool address::empty() const {
     return (_ip == network::constants::null_ip) and (_port == network::constants::null_port);
 }
 
-phy::phy() : _ip(network::constants::null_ip), _name(network::constants::any_interface) {}
+phy::phy() : _ip(network::constants::null_ip), _name(network::constants::any_interface_name) {}
 
-phy::phy(const string &name) : _ip(network::constants::null_ip), _name(name) {
-    if (_name != network::constants::any_interface) {
+phy::phy(const std::string &name) : _ip(network::constants::null_ip), _name(name) {
+    if (_name != network::constants::any_interface_name) {
         phy_addresses();
         if (_ip == network::constants::null_ip)
             throw std::runtime_error("interface not found: " + _name);
     }
 }
 
-phy::phy(string &&name) : _ip(network::constants::null_ip), _name(std::move(name)) {
-    if (_name != network::constants::any_interface) {
+phy::phy(std::string &&name) : _ip(network::constants::null_ip), _name(std::move(name)) {
+    if (_name != network::constants::any_interface_name) {
         phy_addresses();
         if (_ip == network::constants::null_ip)
             throw std::runtime_error("interface not found: " + _name);
@@ -119,14 +112,14 @@ phy::phy(string &&name) : _ip(network::constants::null_ip), _name(std::move(name
 
 phy::phy(const ip_int &ip) : _ip(ip), _name(phy_name()) {}
 
-string phy::phy_name() {
+std::string phy::phy_name() {
     ifaddrs *interface = nullptr;
-    string name;
+    std::string name;
     if (getifaddrs(&interface) < 0) return name;
     for (ifaddrs *if_iter = interface; if_iter != nullptr; if_iter = if_iter->ifa_next)
         if (if_iter->ifa_addr != nullptr and if_iter->ifa_name != nullptr and
             if_iter->ifa_addr->sa_family == AF_INET and
-            _ip == (ip_int)((struct sockaddr_in *)if_iter->ifa_addr)->sin_addr.s_addr) {
+            _ip == ntohl(((struct sockaddr_in *)if_iter->ifa_addr)->sin_addr.s_addr)) {
             name = if_iter->ifa_name;
             break;
         }
@@ -140,8 +133,8 @@ void phy::phy_addresses() {
         for (ifaddrs *if_iter = interface; if_iter != nullptr; if_iter = if_iter->ifa_next)
             if (if_iter->ifa_addr != nullptr and if_iter->ifa_name != nullptr and
                 if_iter->ifa_addr->sa_family == AF_INET and _name.compare(if_iter->ifa_name) == 0) {
-                _ip = ((struct sockaddr_in *)if_iter->ifa_addr)->sin_addr.s_addr;
-                _netmask = ((struct sockaddr_in *)if_iter->ifa_netmask)->sin_addr.s_addr;
+                _ip = ntohl(((struct sockaddr_in *)if_iter->ifa_addr)->sin_addr.s_addr);
+                _netmask = ntohl(((struct sockaddr_in *)if_iter->ifa_netmask)->sin_addr.s_addr);
                 break;
             }
     } else
@@ -149,9 +142,9 @@ void phy::phy_addresses() {
     freeifaddrs(interface);
 }
 
-void phy::name(const string &name) {
+void phy::name(const std::string &name) {
     _name = name;
-    if (_name == network::constants::any_interface) {
+    if (_name == network::constants::any_interface_name) {
         _ip = network::constants::null_ip;
     } else {
         phy_addresses();
@@ -160,9 +153,9 @@ void phy::name(const string &name) {
     }
 }
 
-void phy::name(string &&name) {
+void phy::name(std::string &&name) {
     _name = std::move(name);
-    if (_name == network::constants::any_interface) {
+    if (_name == network::constants::any_interface_name) {
         _ip = network::constants::null_ip;
     } else {
         phy_addresses();
@@ -180,13 +173,13 @@ void phy::ip(const ip_int &ip) {
     }
 }
 
-const string &phy::name() const { return _name; }
+const std::string &phy::name() const { return _name; }
 
 const ip_int &phy::ip() const { return _ip; }
 
-const string phy::ip_string() const { return address::ip_string(_ip); }
+const std::string phy::ip_string() const { return ip::to_string(_ip); }
 
-const string phy::broadcast_string() const { return address::ip_string(_ip | ~_netmask); }
+const std::string phy::broadcast_string() const { return ip::to_string(_ip | ~_netmask); }
 
 const ip_int &phy::netmask() const { return _netmask; }
 

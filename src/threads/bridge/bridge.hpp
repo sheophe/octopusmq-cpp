@@ -19,8 +19,6 @@ namespace octopus_mq::bridge {
 
 class implementation final : public adapter_interface {
     const adapter_settings_ptr _settings;
-    bool _verbose;
-
     boost::asio::io_context _ioc;
     std::unique_ptr<server> _server;
     std::thread _thread;

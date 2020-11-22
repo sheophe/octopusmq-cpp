@@ -16,8 +16,7 @@
 
 namespace octopus_mq {
 
-using std::string;
-using arg_handler = void (*)();
+using arg_handler = std::function<void()>;
 
 class control {
     static inline bool _initialized = false;
@@ -36,8 +35,8 @@ class control {
 
     static void message_queue_manager();  // Main thread routine
 
-    static inline std::map<string, arg_handler> _argument_map = { { "--daemon", arg_daemon },
-                                                                  { "--help", arg_help } };
+    static inline std::map<std::string, arg_handler> _argument_map = { { "--daemon", arg_daemon },
+                                                                       { "--help", arg_help } };
 
    public:
     static void init_signal_handlers();

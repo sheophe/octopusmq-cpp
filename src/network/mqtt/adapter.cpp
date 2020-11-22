@@ -9,7 +9,7 @@ static octopus_mq::adapter_settings_parser adapter_settings_parser = {
     { adapter::field_name::transport,
       [](octopus_mq::adapter_settings *self, const adapter_settings_parser_item &item) {
           if (item->is_string()) {
-              std::string transport_str = item->get<string>();
+              std::string transport_str = item->get<std::string>();
               static_cast<adapter_settings *>(self)->transport(transport_str);
               static_cast<adapter_settings *>(self)->name_append('(' + transport_str + ')');
           } else
@@ -19,7 +19,7 @@ static octopus_mq::adapter_settings_parser adapter_settings_parser = {
     { adapter::field_name::role,
       [](octopus_mq::adapter_settings *self, const adapter_settings_parser_item &item) {
           if (item->is_string()) {
-              std::string role_str = item->get<string>();
+              std::string role_str = item->get<std::string>();
               static_cast<adapter_settings *>(self)->role(role_str);
               static_cast<adapter_settings *>(self)->name_append(role_str);
           } else
@@ -43,7 +43,7 @@ adapter_settings::adapter_settings(const nlohmann::json &json)
 
 void adapter_settings::transport(const transport_type &transport) { _transport = transport; }
 
-void adapter_settings::transport(const string &transport) {
+void adapter_settings::transport(const std::string &transport) {
     if (auto iter = _transport_from_name.find(transport); iter != _transport_from_name.end())
         _transport = iter->second;
     else
@@ -55,7 +55,7 @@ const transport_type &adapter_settings::transport() const { return _transport; }
 #ifdef OCTOMQ_ENABLE_MQTT_CLIENT
 void adapter_settings::role(const adapter_role &role) { _role = role; }
 
-void adapter_settings::role(const string &role) {
+void adapter_settings::role(const std::string &role) {
     if (auto iter = _role_from_name.find(role); iter != _role_from_name.end())
         _role = iter->second;
     else

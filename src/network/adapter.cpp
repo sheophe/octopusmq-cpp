@@ -4,13 +4,11 @@
 
 namespace octopus_mq {
 
-using std::string;
-
 adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann::json &json)
     : _phy(), _port(network::constants::null_port), _protocol(protocol), _generated_name(false) {
     // Parsing protocol name
     // It exists and is string. That was already checked by adapter_factory
-    _protocol_name = json[adapter::field_name::protocol].get<string>();
+    _protocol_name = json[adapter::field_name::protocol].get<std::string>();
 
     // Parsing interface
     if (not json.contains(adapter::field_name::interface))
@@ -18,9 +16,9 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
 
     const nlohmann::json &interface_field = json[adapter::field_name::interface];
     if (interface_field.is_string()) {
-        std::string interface_name = interface_field.get<string>();
+        std::string interface_name = interface_field.get<std::string>();
         if (_protocol_name == network::protocol_name::bridge &&
-            interface_name == network::constants::any_interface)
+            interface_name == network::constants::any_interface_name)
             throw invalid_bridge_interface();
         _phy = octopus_mq::phy(interface_name);
     } else
@@ -36,24 +34,24 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
     else
         throw field_type_error(adapter::field_name::port);
 
-    // Parsing scope
-    if (not json.contains(adapter::field_name::scope))
-        throw missing_field_error(adapter::field_name::scope);
-
-    const nlohmann::json &scope_field = json[adapter::field_name::scope];
-    if (scope_field.is_string())
-        _scope = octopus_mq::scope(scope_field.get<string>());
-    else if (scope_field.is_array())
-        _scope = octopus_mq::scope(scope_field.get<std::vector<string>>());
-    else
-        throw field_type_error(adapter::field_name::scope);
+    // Parsing optional 'scope' field. If it is absent, it will be defaulted to '#'
+    if (json.contains(adapter::field_name::scope)) {
+        const nlohmann::json &scope_field = json[adapter::field_name::scope];
+        if (scope_field.is_string())
+            _scope = octopus_mq::scope(scope_field.get<std::string>());
+        else if (scope_field.is_array())
+            _scope = octopus_mq::scope(scope_field.get<std::vector<std::string>>());
+        else
+            throw field_type_error(adapter::field_name::scope);
+    } else
+        _scope = octopus_mq::scope(adapter::defaults::scope);
 
     // Parsing optional 'name' field
     // Derived classes may additionally set the name
     if (json.contains(adapter::field_name::name)) {
         const nlohmann::json &name_field = json[adapter::field_name::name];
         if (name_field.is_string())
-            _name = name_field.get<string>();
+            _name = name_field.get<std::string>();
         else
             throw field_type_error(adapter::field_name::name);
     } else {
@@ -64,15 +62,15 @@ adapter_settings::adapter_settings(const protocol_type &protocol, const nlohmann
 
 void adapter_settings::phy(const class phy &phy) { _phy = phy; }
 
-void adapter_settings::phy(const string &phy) { _phy = octopus_mq::phy(phy); }
+void adapter_settings::phy(const std::string &phy) { _phy = octopus_mq::phy(phy); }
 
 void adapter_settings::port(const port_int &port) { _port = port; }
 
 void adapter_settings::scope(const class scope &scope) { _scope = scope; }
 
-void adapter_settings::name(const string &name) { _name = name; }
+void adapter_settings::name(const std::string &name) { _name = name; }
 
-void adapter_settings::name_append(const string &appendix) {
+void adapter_settings::name_append(const std::string &appendix) {
     if (_generated_name) _name += ' ' + appendix;
 }
 
@@ -82,20 +80,19 @@ const port_int &adapter_settings::port() const { return _port; }
 
 const protocol_type &adapter_settings::protocol() const { return _protocol; }
 
-const string &adapter_settings::protocol_name() const { return _protocol_name; }
+const std::string &adapter_settings::protocol_name() const { return _protocol_name; }
 
 const class scope &adapter_settings::scope() const { return _scope; }
 
-const string &adapter_settings::name() const { return _name; }
+const std::string &adapter_settings::name() const { return _name; }
 
 bool adapter_settings::compare_binding(const ip_int ip, const port_int port) const {
     const ip_int phy_ip = _phy.ip();
-    return ((ip == phy_ip) or (ip == network::constants::loopback_ip) or
-            (phy_ip == network::constants::loopback_ip)) and
+    return ((ip == phy_ip) or (ip::is_loopback(ip)) or (ip::is_loopback(phy_ip))) and
            (port == _port);
 }
 
-const string adapter_settings::binging_name() const {
+const std::string adapter_settings::binging_name() const {
     const address adapter_address(_phy.ip(), _port);
     return adapter_address.to_string();
 }

@@ -34,43 +34,47 @@ namespace adapter {
 
     }  // namespace field_name
 
-}  // namespace adapter
+    namespace defaults {
 
-using std::string, std::shared_ptr;
+        constexpr char scope[] = "#";
+
+    }
+
+}  // namespace adapter
 
 class adapter_settings;
 using adapter_settings_parser_item = nlohmann::detail::iter_impl<const nlohmann::json>;
 using adapter_settings_parser =
-    std::map<string, void (*)(adapter_settings *, const adapter_settings_parser_item &)>;
+    std::map<std::string, void (*)(adapter_settings *, const adapter_settings_parser_item &)>;
 
 class adapter_settings {
     phy _phy;
     port_int _port;
     protocol_type _protocol;
-    string _protocol_name;
+    std::string _protocol_name;
     scope _scope;
-    string _name;
+    std::string _name;
     bool _generated_name;
 
    public:
     adapter_settings(const protocol_type &protocol, const nlohmann::json &json);
 
     void phy(const class phy &phy);
-    void phy(const string &phy);
+    void phy(const std::string &phy);
     void port(const port_int &port);
     void scope(const class scope &scope);
-    void name(const string &name);
-    void name_append(const string &appendix);  // Only works with generated names
+    void name(const std::string &name);
+    void name_append(const std::string &appendix);  // Only works with generated names
 
     const class phy &phy() const;
     const port_int &port() const;
     const protocol_type &protocol() const;
-    const string &protocol_name() const;
+    const std::string &protocol_name() const;
     const class scope &scope() const;
-    const string &name() const;
+    const std::string &name() const;
 
     bool compare_binding(const ip_int ip, const port_int port) const;
-    const string binging_name() const;
+    const std::string binging_name() const;
 };
 
 using adapter_settings_ptr = std::shared_ptr<adapter_settings>;

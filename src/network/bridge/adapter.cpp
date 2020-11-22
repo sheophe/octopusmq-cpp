@@ -24,7 +24,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
 
     const nlohmann::json& mode_field = discovery_field[adapter::field_name::mode];
     if (mode_field.is_string()) {
-        std::string mode_name = mode_field.get<string>();
+        std::string mode_name = mode_field.get<std::string>();
 
         if (mode_name == network::transport_mode_name::unicast) {
             _transport_mode = transport_mode::unicast;
@@ -41,7 +41,8 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                     throw field_type_error(adapter::field_name::discovery,
                                            adapter::field_name::endpoints);
 
-                std::vector<string> endpoints_strvec = endpoints_field.get<std::vector<string>>();
+                std::vector<std::string> endpoints_strvec =
+                    endpoints_field.get<std::vector<std::string>>();
 
                 // Variable 'format' is initialized as 'list', so no need to set it here again
                 format = discovery_endpoints_format::list;
@@ -65,22 +66,23 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                 if (not to_field.is_string())
                     throw field_type_error(adapter::field_name::discovery, adapter::field_name::to);
 
-                string from_string = from_field.get<string>();
+                std::string from_string = from_field.get<std::string>();
                 address from_addr(from_string);
                 const ip_int& from_ip = from_addr.ip();
                 if (from_ip == network::constants::null_ip)
                     throw invalid_bridge_endpoint(from_string);
 
-                string to_string = to_field.get<string>();
+                std::string to_string = to_field.get<std::string>();
                 address to_addr(to_string);
                 const ip_int& to_ip = to_addr.ip();
                 if (to_ip == network::constants::null_ip) throw invalid_bridge_endpoint(to_string);
 
-                // Currently only supporting endpoints from the same networks
+                // Currently only supporting endpoints from the same nets
                 if ((from_ip & phy().netmask()) != phy().net() or
                     (to_ip & phy().netmask()) != phy().net())
                     throw bridge_range_different_nets();
 
+                // Check if host numbers are sane
                 if (((from_ip & phy().wildcard()) > (to_ip & phy().wildcard())) or
                     (from_ip < phy().host_min()) or (to_ip > phy().host_max()))
                     throw invalid_bridge_range();
@@ -94,7 +96,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                 // in config
                 format = discovery_endpoints_format::range;
                 endpoints = discovery_range();
-                if (phy().ip() == network::constants::loopback_ip) {
+                if (ip::is_loopback(phy().ip())) {
                     std::get<discovery_range>(endpoints).from = network::constants::loopback_ip;
                     std::get<discovery_range>(endpoints).to = network::constants::loopback_ip;
                 } else {
@@ -102,6 +104,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                     std::get<discovery_range>(endpoints).to = phy().host_max();
                 }
             }
+
             this->discovery(format, endpoints);
         } else if (mode_name == network::transport_mode_name::broadcast)
             _transport_mode = transport_mode::broadcast;
@@ -118,7 +121,12 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
                                        adapter::field_name::send_port);
 
             _send_port = send_port_field.get<std::uint16_t>();
-        } else
+        }
+        // By default send_port will be equal to listening port.
+        // If that happens on loopback interface, the bridge is recursive
+        else if (ip::is_loopback(phy().ip()))
+            throw bridge_recursive_config();
+        else
             _send_port = port();
     } else
         throw field_type_error(adapter::field_name::discovery, adapter::field_name::mode);
@@ -203,14 +211,6 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
     }
 
     timeouts(delay_time, discovery_timeout, acknowledge_timeout, heartbeat_timeout, rescan_timeout);
-
-    // Parsing optional verbose field
-    if (json.contains(adapter::field_name::verbose)) {
-        const nlohmann::json verbose_field = json[adapter::field_name::verbose];
-        if (not verbose_field.is_boolean()) throw field_type_error(adapter::field_name::verbose);
-        _verbose = verbose_field.get<bool>();
-    } else
-        _verbose = false;
 }
 
 void adapter_settings::discovery(const discovery_endpoints_format& format,
@@ -239,7 +239,5 @@ const bridge::timeouts& adapter_settings::timeouts() const { return _timeouts; }
 const enum transport_mode& adapter_settings::transport_mode() const { return _transport_mode; }
 
 const port_int& adapter_settings::send_port() const { return _send_port; }
-
-const bool& adapter_settings::verbose() const { return _verbose; }
 
 }  // namespace octopus_mq::bridge

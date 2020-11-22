@@ -65,6 +65,7 @@ set(LIB_MQTT_DIR ${LIB_DIR}/mqtt_cpp)
 set(SRC_LIST
     ${CORE_DIR}/log.cpp
     ${CORE_DIR}/settings.cpp
+    ${CORE_DIR}/utility.cpp
     ${NETWORK_DIR}/message.cpp
     ${NETWORK_DIR}/network.cpp
     ${NETWORK_DIR}/adapter.cpp

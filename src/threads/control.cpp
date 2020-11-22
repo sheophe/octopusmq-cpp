@@ -10,6 +10,7 @@
 
 #include "core/log.hpp"
 #include "core/settings.hpp"
+#include "core/utility.hpp"
 #include "network/adapter_factory.hpp"
 
 namespace octopus_mq {
@@ -32,7 +33,8 @@ void control::initialize_adapters() {
             adapter.second =
                 adapter_interface_factory::from_settings(adapter.first, _message_queue);
         } catch (const std::runtime_error &re) {
-            log::print(log_type::fatal, "adapter '" + adapter.first->name() + "': " + re.what());
+            log::print(log_type::fatal, "adapter '" + adapter.first->name() +
+                                            "': " + utility::lowercase_string(re.what()));
             _should_stop = true;
             _initialized = false;
             return;
@@ -76,25 +78,25 @@ void control::signal_handler(int sig) {
 }
 
 void control::run(const int argc, const char **argv) {
-    string config_file_name;
+    std::string config_file_name;
     if (argc > 1)
         for (int i = 1; i < argc; ++i) {
             if (argv[i][0] == '-') {
                 if (auto iter = _argument_map.find(argv[i]); iter != _argument_map.end())
                     iter->second();
                 else
-                    throw std::runtime_error("unknown option: " + string(argv[i]));
+                    throw std::runtime_error("unknown option: " + std::string(argv[i]));
             } else if (config_file_name.empty()) {
                 config_file_name = std::filesystem::absolute(argv[i]);
                 if (config_file_name.empty())
-                    throw std::runtime_error("not a valid file name: " + string(argv[i]));
+                    throw std::runtime_error("not a valid file name: " + std::string(argv[i]));
                 if (not std::filesystem::exists(config_file_name))
                     throw std::runtime_error("path does not exist: " + config_file_name);
                 if (not std::filesystem::is_regular_file(config_file_name))
                     throw std::runtime_error("not a file: " + config_file_name);
                 settings::load(config_file_name, _adapter_pool);
             } else
-                throw std::runtime_error("misleading option: " + string(argv[i]));
+                throw std::runtime_error("misleading option: " + std::string(argv[i]));
         }
     if (argc <= 1 or config_file_name.empty()) {
         log::print(log_type::error, "configuration file argument is missing.");
@@ -114,7 +116,10 @@ void control::run(const int argc, const char **argv) {
         shutdown_adapters();
     }
 
-    log::print_stopped(not _initialized);
+    if (_initialized)
+        log::print_stopped();
+    else
+        log::print_failed();
 }
 
 void control::message_queue_manager() {
@@ -125,7 +130,7 @@ void control::message_queue_manager() {
             // This function is responsible for reading and calling inject_publish on all adapters
             _message_queue.wait_and_pop_all(std::chrono::milliseconds(100), _adapter_pool);
         } catch (const std::runtime_error &re) {
-            log::print(log_type::fatal, re.what());
+            log::print(log_type::fatal, utility::lowercase_string(re.what()));
             _initialized = false;  // To indicate an error in log::print_stopped()
             break;
         }

@@ -3,7 +3,7 @@
 
 #include <chrono>
 #include <condition_variable>
-#include <map>
+#include <set>
 #include <mutex>
 #include <string>
 
@@ -16,81 +16,112 @@
 
 namespace octopus_mq::bridge {
 
-using namespace boost::asio;
+using namespace boost;
 
 class server {
-    using system_error_handler = std::function<void(boost::system::error_code ec)>;
+    using network_error_handler = std::function<void(boost::system::error_code ec)>;
     using protocol_error_handler = std::function<void(protocol::basic_error err)>;
 
     // Members initialized in constructor initializer list
-    ip::udp::endpoint _ep;
-    const port_int _send_port;
-    io_context& _ioc;
-    const transport_mode _transport_mode;
-    ip::udp::socket _socket;
-    const std::string& _adapter_name;
-    std::uint8_t _max_nacks;
-    std::chrono::milliseconds _probe_delay;
-    const bool _verbose;
-    bool _stop_request;
+    asio::io_context& _ioc;
+    asio::ip::udp::endpoint _udp_ep;
+    asio::ip::udp::socket _udp_socket;
+    std::unique_ptr<asio::ip::icmp::endpoint> _icmp_ep;
+    std::unique_ptr<asio::ip::icmp::socket> _icmp_socket;
+    asio::ip::address_v4 _netmask;
+    asio::ip::network_v4 _net;
+    adapter_settings_ptr _settings;
+    const std::string _adapter_name;
+    const bool _use_icmp;
 
     // Members initialized in constructor body or in runtime
-    bool _single_endpoint;
-    std::vector<connection_ptr> _endpoints;
+    bool _stop_request;
+    std::set<connection_ptr> _endpoints;
+    std::unique_ptr<asio::steady_timer> _unicast_discovery_delay_timer;
+    std::unique_ptr<asio::steady_timer> _broadcast_discovery_delay_timer;
+    std::uint32_t _broadcast_probe_seq_n;
+    network_payload_ptr _broadcast_receive_buffer;
+    std::uint32_t _max_nacks;
 
     // External handlers
-    system_error_handler _system_error_handler;
+    network_error_handler _network_error_handler;
     protocol_error_handler _protocol_error_handler;
 
+    void initialize();
+
    public:
-    server(ip::udp::endpoint&& endpoint, const port_int& send_port, io_context& ioc,
-           const transport_mode& transport_mode, const discovery_endpoints_format& format,
-           const discovery_endpoints& endpoints, const std::string& adapter_name,
-           const bool verbose);
+    // Constructor with ICMP
+    server(asio::io_context& ioc, asio::ip::address_v4&& netmask,
+           asio::ip::udp::endpoint&& udp_endpoint, asio::ip::icmp::endpoint&& icmp_endpoint,
+           adapter_settings_ptr settings, const std::string& adapter_name);
+
+    // Constructor without ICMP
+    server(asio::io_context& ioc, asio::ip::address_v4&& netmask,
+           asio::ip::udp::endpoint&& udp_endpoint, adapter_settings_ptr settings,
+           const std::string& adapter_name);
 
     // External control functions
     void run();
     void stop();
 
-    // External config setters
-    void set_probe_delay(const std::chrono::milliseconds& delay);
-    void set_max_nacks(const std::uint8_t& max_nacks);
-
     // External handler setters
-    void set_system_error_handler(system_error_handler handler = system_error_handler());
+    void set_network_error_handler(network_error_handler handler = network_error_handler());
     void set_protocol_error_handler(protocol_error_handler handler = protocol_error_handler());
 
    private:
     // Internal control functions
     void start_discovery();
-    void async_listen(connection_ptr endpoint, const std::size_t max_packet_size);
-    void send_to(connection_ptr endpoint, protocol::v1::packet_ptr packet,
-                 const bool print_log = true);
+
+    void async_broadcast_discovery();
+    void async_unicast_discovery(const std::set<connection_ptr>::iterator& iter,
+                                 const bool& retry = false);
+    void async_unicast_rediscovery(const connection_ptr& endpoint, const bool& retry = false);
+
+    void send_broadcast_heartbeat();
+    void send_unicast_heartbeat(const connection_ptr& endpoint);
+    void async_nack_sender(const connection_ptr& endpoint, const protocol::v1::packet_type& type);
+
+    void async_udp_broadcast_listen();
+    void async_udp_listen_to(const connection_ptr& endpoint, const std::size_t& buffer_size);
+    void udp_send_to(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
 
     // Internal handlers
-    void handle_receive(connection_ptr endpoint, network_payload_ptr payload,
-                        const boost::system::error_code& ec, std::size_t bytes_received);
-    void handle_packet(connection_ptr endpoint, protocol::v1::packet_ptr packet);
-    bool is_packet_asynchronous(const protocol::v1::packet_type& type);
-    bool is_packet_expected(connection_ptr endpoint, const protocol::v1::packet_type& type);
+    void handle_udp_broadcast_receive(const boost::system::error_code& ec,
+                                      const std::size_t& bytes_received);
+    void handle_udp_receive_from(const connection_ptr& endpoint,
+                                 const boost::system::error_code& ec,
+                                 const std::size_t& bytes_received);
+    void handle_unicast_probe_sent(const std::set<connection_ptr>::iterator& iter,
+                                   const connection_ptr& endpoint,
+                                   const protocol::v1::packet_ptr& packet,
+                                   const boost::system::error_code& ec,
+                                   const std::size_t& bytes_sent, const bool& retry);
+    void handle_unicast_rediscovery_sent(const connection_ptr& endpoint,
+                                         const protocol::v1::packet_ptr& packet,
+                                         const boost::system::error_code& ec,
+                                         const std::size_t& bytes_sent);
+
+    void handle_packet(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
+    bool is_packet_expected(const connection_ptr& endpoint, const protocol::v1::packet_type& type);
 
     // Packet handlers
-    void handle_probe(connection_ptr endpoint);
-    // void handle_probe_ack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_heartbeat(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_heartbeat_ack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_heartbeat_nack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_subscribe(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_subscribe_ack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_subscribe_nack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_unsubscribe(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_unsubscribe_ack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_unsubscribe_nack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_publish(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_publish_ack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_publish_nack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_disconnect(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
-    // void handle_disconnect_ack(const ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
+    void handle_probe(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
+    void handle_heartbeat(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
+    void handle_heartbeat_ack(const connection_ptr& endpoint);
+    // void handle_heartbeat_nack(const asio::ip::udp::endpoint& ep,
+    // protocol::v1::packet_ptr packet); void handle_subscribe(const asio::ip::udp::endpoint& ep,
+    // protocol::v1::packet_ptr packet); void handle_subscribe_ack(const asio::ip::udp::endpoint&
+    // ep, protocol::v1::packet_ptr packet); void handle_subscribe_nack(const
+    // asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr packet); void handle_unsubscribe(const
+    // asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr packet); void
+    // handle_unsubscribe_ack(const asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr packet);
+    // void handle_unsubscribe_nack(const asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr
+    // packet); void handle_publish(const asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr
+    // packet); void handle_publish_ack(const asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr
+    // packet); void handle_publish_nack(const asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr
+    // packet); void handle_disconnect(const asio::ip::udp::endpoint& ep, protocol::v1::packet_ptr
+    // packet); void handle_disconnect_ack(const asio::ip::udp::endpoint& ep,
+    // protocol::v1::packet_ptr packet);
 };
 
 }  // namespace octopus_mq::bridge

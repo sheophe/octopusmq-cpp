@@ -13,8 +13,6 @@
 
 namespace octopus_mq {
 
-using std::string;
-
 class settings {
     static inline nlohmann::json _settings_json;
 
@@ -24,7 +22,7 @@ class settings {
     static void parse(adapter_pool &adapter_pool);
 
    public:
-    static void load(const string &file_name, adapter_pool &adapter_pool);
+    static void load(const std::string &file_name, adapter_pool &adapter_pool);
 
     static const nlohmann::json json();
 };

@@ -1,6 +1,7 @@
 #include <stdexcept>
 
 #include "core/log.hpp"
+#include "core/utility.hpp"
 #include "threads/control.hpp"
 
 using namespace octopus_mq;
@@ -13,9 +14,9 @@ int main(const int argc, const char **argv) {
     // try...catch to handle fatal exceptions.
     try {
         control::run(argc, argv);
-    } catch (const std::exception &e) {
-        log::print(log_type::fatal, e.what());
-        log::print_stopped(true);
+    } catch (const std::exception &error) {
+        log::print(log_type::fatal, utility::lowercase_string(error.what()));
+        log::print_failed();
         return 1;
     }
     return 0;

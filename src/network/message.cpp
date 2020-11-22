@@ -6,11 +6,11 @@ namespace octopus_mq {
 
 message::message(message_payload &&payload) : _payload(move(payload)) {}
 
-message::message(message_payload &&payload, const string &origin_client_id)
+message::message(message_payload &&payload, const std::string &origin_client_id)
     : _payload(move(payload)), _origin_client_id(origin_client_id), _origin_pubopts(0) {}
 
-message::message(message_payload &&payload, const string &topic, const std::uint8_t pubopts,
-                 const address &origin_addr, const string &origin_clid,
+message::message(message_payload &&payload, const std::string &topic, const std::uint8_t pubopts,
+                 const address &origin_addr, const std::string &origin_clid,
                  const mqtt::version &version, const mqtt_cpp::v5::properties &props)
     : _payload(move(payload)),
       _topic(topic),
@@ -27,11 +27,13 @@ void message::payload(const message_payload &payload) { _payload = payload; }
 
 void message::payload(message_payload &&payload) { _payload = move(payload); }
 
-void message::topic(const string &topic) { _topic = topic; }
+void message::topic(const std::string &topic) { _topic = topic; }
 
 void message::origin_addr(const address &origin_address) { _origin_address = origin_address; }
 
-void message::origin_clid(const string &origin_client_id) { _origin_client_id = origin_client_id; }
+void message::origin_clid(const std::string &origin_client_id) {
+    _origin_client_id = origin_client_id;
+}
 
 void message::pubopts(const std::uint8_t pubopts) { _origin_pubopts = pubopts; }
 
@@ -41,11 +43,11 @@ void message::mqtt_version(const mqtt::version version) { _mqtt_version = versio
 
 const message_payload &message::payload() const { return _payload; }
 
-const string &message::topic() const { return _topic; }
+const std::string &message::topic() const { return _topic; }
 
 const address &message::origin_addr() const { return _origin_address; }
 
-const string &message::origin_clid() const { return _origin_client_id; }
+const std::string &message::origin_clid() const { return _origin_client_id; }
 
 const std::uint8_t &message::pubopts() const { return _origin_pubopts; }
 
@@ -55,18 +57,18 @@ const mqtt::version &message::mqtt_version() const { return _mqtt_version; }
 
 scope::scope() : _is_absolute_wildcard(false) {}
 
-scope::scope(const string &scope_string) : _is_absolute_wildcard(false) {
+scope::scope(const std::string &scope_string) : _is_absolute_wildcard(false) {
     if (scope_string == hash_sign)
         _is_absolute_wildcard = true;
     else {
         if (topic_tokens tokens = tokenize_topic_filter(scope_string); not tokens.empty())
-            _scope.push_back(tokens);
+            _scope.emplace(tokens);
         else
             throw invalid_topic_filter(scope_string);
     }
 }
 
-scope::scope(const std::vector<string> &scope_vector) : _is_absolute_wildcard(false) {
+scope::scope(const std::vector<std::string> &scope_vector) : _is_absolute_wildcard(false) {
     for (auto &scope_string : scope_vector) {
         if (scope_string == hash_sign) {
             _scope.clear();
@@ -74,13 +76,13 @@ scope::scope(const std::vector<string> &scope_vector) : _is_absolute_wildcard(fa
             break;
         }
         if (topic_tokens tokens = tokenize_topic_filter(scope_string); not tokens.empty())
-            _scope.push_back(tokens);
+            _scope.emplace(tokens);
         else
             throw invalid_topic_filter(scope_string);
     }
 }
 
-bool scope::add(const string &topic_filter) {
+bool scope::add(const std::string &topic_filter) {
     if (topic_filter == hash_sign) {
         _scope.clear();
         _is_absolute_wildcard = true;
@@ -91,13 +93,13 @@ bool scope::add(const string &topic_filter) {
     if (tokens.empty()) return false;
     // Ensure there are no two equal topic filers is scope
     if (std::find(_scope.begin(), _scope.end(), tokens) == _scope.end()) {
-        _scope.push_back(tokens);
+        _scope.emplace(tokens);
         _is_absolute_wildcard = false;
     }
     return true;
 }
 
-void scope::remove(const string &topic_filter) {
+void scope::remove(const std::string &topic_filter) {
     if (topic_filter == hash_sign) {
         _scope.clear();
         _is_absolute_wildcard = false;
@@ -112,7 +114,20 @@ void scope::remove(const string &topic_filter) {
     }
 }
 
-scope::topic_tokens scope::tokenize_topic_filter(const string &topic_filter) {
+void scope::clear() {
+    _scope.clear();
+    _is_absolute_wildcard = false;
+}
+
+void scope::clear_internal() {
+    for (auto &iter : _scope) {
+        if (iter[0][0] == dollar_sign) {
+            _scope.erase(iter);
+        }
+    }
+}
+
+scope::topic_tokens scope::tokenize_topic_filter(const std::string &topic_filter) {
     const topic_tokens empty;
     topic_tokens tokens;
 
@@ -129,16 +144,16 @@ scope::topic_tokens scope::tokenize_topic_filter(const string &topic_filter) {
         std::size_t second = topic_filter.find_first_of(slash_sign[0], first);
         // first has index of start of token
         // second has index of end of token + 1;
-        if (second == string::npos) second = topic_filter.size();
-        string token = topic_filter.substr(first, second - first);
+        if (second == std::string::npos) second = topic_filter.size();
+        std::string token = topic_filter.substr(first, second - first);
         // Check the token
         // If token == "#" but is not the final token in sequence, the topic filter is invalid
         if (token == hash_sign && second != topic_filter.size()) return empty;
         // If token does not equal to hash sign or plus sign, but does contain
         // hash sign or plus sign somewhere inside, the topic filter is invalid
         if (token != hash_sign and token != plus_sign and
-            (token.find_first_of(hash_sign[0]) != string::npos or
-             token.find_first_of(plus_sign[0]) != string::npos))
+            (token.find_first_of(hash_sign[0]) != std::string::npos or
+             token.find_first_of(plus_sign[0]) != std::string::npos))
             return empty;
         tokens.push_back(token);
         first = second + 1;
@@ -147,7 +162,7 @@ scope::topic_tokens scope::tokenize_topic_filter(const string &topic_filter) {
     return tokens;
 }
 
-scope::topic_tokens scope::tokenize_topic(const string &topic) {
+scope::topic_tokens scope::tokenize_topic(const std::string &topic) {
     const topic_tokens empty;
     topic_tokens tokens;
 
@@ -156,16 +171,16 @@ scope::topic_tokens scope::tokenize_topic(const string &topic) {
 
     // If topic contains "#" or "+" it may be a topic filter, but not a topic.
     // Return empty vector
-    if (topic.find_first_of(hash_sign[0]) != string::npos or
-        topic.find_first_of(plus_sign[0]) != string::npos)
+    if (topic.find_first_of(hash_sign[0]) != std::string::npos or
+        topic.find_first_of(plus_sign[0]) != std::string::npos)
         return empty;
 
     for (std::size_t first = 0; first <= topic.size();) {
         std::size_t second = topic.find_first_of(slash_sign[0], first);
         // first has index of start of token
         // second has index of end of token + 1;
-        if (second == string::npos) second = topic.size();
-        string token = topic.substr(first, second - first);
+        if (second == std::string::npos) second = topic.size();
+        std::string token = topic.substr(first, second - first);
         tokens.push_back(token);
         first = second + 1;
     }
@@ -190,7 +205,7 @@ bool scope::compare_topics(const topic_tokens &filter, const topic_tokens &topic
 
 bool scope::empty() const { return _scope.empty(); }
 
-bool scope::includes(const string &topic) const {
+bool scope::includes(const std::string &topic) const {
     if (_is_absolute_wildcard) return true;
     if (_scope.empty()) return false;
 
@@ -207,12 +222,19 @@ bool scope::includes(const string &topic) const {
     return match;
 }
 
-bool scope::contains(const string &topic_filter) const {
+bool scope::contains(const std::string &topic_filter) const {
     if (topic_filter == hash_sign) return _is_absolute_wildcard;
 
     topic_tokens tokens = tokenize_topic_filter(topic_filter);
     if (tokens.empty()) return false;
     return std::find(_scope.begin(), _scope.end(), tokens) != _scope.end();
+}
+
+bool scope::valid_topic(const std::string_view &topic) {
+    if (topic == hash_sign or topic == plus_sign) return false;
+
+    topic_tokens tokens = tokenize_topic(std::string(topic));
+    return not tokens.empty();
 }
 
 bool scope::valid_topic_filter(const std::string_view &topic_filter) {
@@ -232,5 +254,7 @@ bool scope::matches_filter(const std::string_view &filter, const std::string_vie
     if (filter_tokens.empty() or topic_tokens.empty()) return false;
     return compare_topics(filter_tokens, topic_tokens);
 }
+
+bool scope::is_internal(const std::string_view &topic) { return (topic[0] == dollar_sign); }
 
 }  // namespace octopus_mq
