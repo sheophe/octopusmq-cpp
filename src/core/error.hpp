@@ -51,6 +51,12 @@ class unknown_protocol_error : public std::runtime_error {
         : std::runtime_error("unknown protocol: '" + protocol_name + "'.") {}
 };
 
+class unknown_transport_mode_error : public std::runtime_error {
+   public:
+    explicit unknown_transport_mode_error(const std::string &mode_name)
+        : std::runtime_error("unknown transport mode: '" + mode_name + "'.") {}
+};
+
 class adapter_binding_error : public std::runtime_error {
    public:
     explicit adapter_binding_error(const std::string &binding_name,
@@ -94,12 +100,6 @@ class invalid_bridge_interface : public std::runtime_error {
    public:
     explicit invalid_bridge_interface()
         : std::runtime_error("bridge adapter: cannot use wildcard interface name.") {}
-};
-
-class invalid_bridge_discovery_mode : public std::runtime_error {
-   public:
-    explicit invalid_bridge_discovery_mode(const std::string &mode)
-        : std::runtime_error("bridge adapter: transport mode '" + mode + "' is not supported.") {}
 };
 
 class invalid_bridge_endpoint : public std::runtime_error {

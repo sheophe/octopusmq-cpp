@@ -22,6 +22,8 @@ namespace adapter {
         constexpr char from[] = "from";
         constexpr char to[] = "to";
         constexpr char endpoints[] = "endpoints";
+        constexpr char group[] = "group";
+        constexpr char hops[] = "hops";
         constexpr char send_port[] = "send_port";
         constexpr char delay[] = "delay";
         constexpr char timeouts[] = "timeouts";
@@ -79,6 +81,8 @@ class adapter_settings : public octopus_mq::adapter_settings {
     discovery_settings _discovery_settings;
     timeouts _timeouts;
     transport_mode _transport_mode;
+    address _polycast_address;
+    std::uint8_t _multicast_hops;
     port_int _send_port;
 
    public:
@@ -96,6 +100,8 @@ class adapter_settings : public octopus_mq::adapter_settings {
     const discovery_settings& discovery() const;
     const class timeouts& timeouts() const;
     const transport_mode& transport_mode() const;
+    const address& polycast_address() const;
+    const std::uint8_t& multicast_hops() const;
     const port_int& send_port() const;
 };
 

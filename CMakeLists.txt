@@ -5,6 +5,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 project(octopusmq VERSION 1.2.0 LANGUAGES CXX)
 
 option(OCTOMQ_ENABLE_TLS "Enable TLS support (OpenSSL is required)" OFF)
+option(OCTOMQ_ENABLE_OMQB "Enable built-in bridge protocol" OFF)
 option(OCTOMQ_ENABLE_DDS "Enable DDS support (OpenDDS patched for C++17 is required)" ON)
 option(OCTOMQ_ENABLE_MQTT_CLIENT "Enable MQTT client adapter" OFF)
 option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" OFF)
@@ -19,6 +20,13 @@ if(OCTOMQ_ENABLE_TLS)
     find_package(OpenSSL REQUIRED)
 else()
     message(STATUS "Building without TLS support")
+endif()
+
+if (OCTOMQ_ENABLE_OMQB)
+    message(STATUS "Building with built-in bridge protocol support")
+    add_definitions(-DOCTOMQ_ENABLE_OMQB)
+else()
+    message(STATUS "Building without built-in bridge protocol support")
 endif()
 
 if(OCTOMQ_ENABLE_DDS)
@@ -70,20 +78,19 @@ set(SRC_LIST
     ${NETWORK_DIR}/network.cpp
     ${NETWORK_DIR}/adapter.cpp
     ${NETWORK_DIR}/adapter_factory.cpp
-    ${NETWORK_DIR}/bridge/adapter.cpp
-    ${NETWORK_DIR}/bridge/protocol.cpp
-    ${NETWORK_DIR}/bridge/server.cpp
-    ${THREADS_DIR}/bridge/bridge.cpp
     ${NETWORK_DIR}/mqtt/adapter.cpp
     ${THREADS_DIR}/mqtt/broker.cpp
     ${THREADS_DIR}/control.cpp
     ${SRC_DIR}/octopus_mq.cpp
 )
 
-if(OCTOMQ_ENABLE_MQTT_CLIENT)
+if(OCTOMQ_ENABLE_OMQB)
     set(SRC_LIST
         ${SRC_LIST}
-        ${THREADS_DIR}/mqtt/client.cpp
+        ${NETWORK_DIR}/bridge/adapter.cpp
+        ${NETWORK_DIR}/bridge/protocol.cpp
+        ${NETWORK_DIR}/bridge/server.cpp
+        ${THREADS_DIR}/bridge/bridge.cpp
     )
 endif()
 
@@ -92,6 +99,13 @@ if(OCTOMQ_ENABLE_DDS)
         ${SRC_LIST}
         ${NETWORK_DIR}/dds/adapter.cpp
         ${THREADS_DIR}/dds/peer.cpp
+    )
+endif()
+
+if(OCTOMQ_ENABLE_MQTT_CLIENT)
+    set(SRC_LIST
+        ${SRC_LIST}
+        ${THREADS_DIR}/mqtt/client.cpp
     )
 endif()
 

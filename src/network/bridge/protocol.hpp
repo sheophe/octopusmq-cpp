@@ -25,8 +25,8 @@ namespace protocol {
 
     namespace v1 {
 
-        enum class connection_state {
-            undiscovered,         // Node was not yet discovered but planned
+        enum class connection_state : std::uint8_t {
+            undiscovered = 0x00,  // Node was not yet discovered (initial state)
             discovery_requested,  // Discovery request was sent to node
             discovered,           // Node successfully "connected"
             nacking,              // Node didn't sent ack and server is now sending nacks
@@ -64,8 +64,7 @@ namespace protocol {
             publish = 0x05,
             publish_ack = 0x15,
             publish_nack = 0x25,
-            disconnect = 0x06,
-            disconnect_ack = 0x16
+            disconnect = 0x06
         };
 
         namespace packet_name {
@@ -102,14 +101,9 @@ namespace protocol {
             constexpr std::size_t version_size = sizeof(std::uint8_t);
             constexpr std::size_t type_offset = version_offset + version_size;
             constexpr std::size_t type_size = sizeof(std::uint8_t);
-            constexpr std::size_t seq_n_offset = type_offset + type_size;
-            constexpr std::size_t seq_n_size = sizeof(std::uint32_t);
-            constexpr std::size_t header_size = seq_n_offset + seq_n_size;
+            constexpr std::size_t header_size = type_offset + type_size;
 
-            constexpr std::uint32_t uninit_seq_n = 0;
-            constexpr std::uint32_t min_seq_n = 1;
-            constexpr std::uint32_t uninit_sub_id = 0;
-            constexpr std::uint32_t uninit_pub_id = 0;
+            constexpr std::uint32_t uninit_packet_id = 0;
 
             constexpr std::size_t subscription_flags_size = sizeof(std::uint8_t);
             constexpr std::size_t publication_flags_size =
@@ -166,15 +160,13 @@ namespace protocol {
 
         class packet {
            public:
-            packet(const packet_type& packet_type,
-                   const std::uint32_t& seq_n);  // Serialize constructor
+            packet(const packet_type& packet_type);  // Serialize constructor
             packet(const packet_type& packet_type,
                    network_payload_ptr payload);  // Deserialize constructor
 
             std::uint32_t magic;
             version version;
             packet_type type;
-            std::uint32_t sequence_number;
 
             network_payload payload;
 
@@ -190,34 +182,31 @@ namespace protocol {
         // Generic ACK packet
         class ack final : public packet {
            public:
-            ack(const packet_type& packet_type, const std::uint32_t& seq_n)
-                : packet(packet_type, seq_n) {
-                if (packet::family(type) != packet_family::ack)
-                    throw bridge_malformed_packet_constructed();
-            }  // Serialize constructor
+            ack(const packet_type& packet_type,
+                const std::uint32_t& packet_id);  // Serialize constructor
 
-            ack(const packet_type& packet_type, network_payload_ptr payload)
-                : packet(packet_type, payload) {}  // Deserialize constructor
+            ack(const packet_type& packet_type,
+                network_payload_ptr payload);  // Deserialize constructor
+
+            std::uint32_t packet_id;
         };
 
         // Generic NACK packet
         class nack final : public packet {
            public:
-            nack(const packet_type& packet_type, const std::uint32_t& seq_n)
-                : packet(packet_type, seq_n) {
-                if (packet::family(type) != packet_family::nack)
-                    throw bridge_malformed_packet_constructed();
-            }  // Serialize constructor
+            nack(const packet_type& packet_type, const std::uint32_t& packet_id,
+                 const std::uint32_t& nack_counter);  // Serialize constructor
 
-            nack(const packet_type& packet_type, network_payload_ptr payload)
-                : packet(packet_type, payload) {}  // Deserialize constructor
+            nack(const packet_type& packet_type,
+                 network_payload_ptr payload);  // Deserialize constructor
+
+            std::uint32_t packet_id;
         };
 
         // PROBE packet
         class probe final : public packet {
            public:
-            probe(const ip_int& ip, const port_int& port,
-                  const std::uint32_t& seq_n);  // Serialize constructor
+            probe(const ip_int& ip, const port_int& port);  // Serialize constructor
 
             probe(network_payload_ptr payload);  // Deserialize constructor
 
@@ -230,10 +219,11 @@ namespace protocol {
         // HEARTBEAT packet
         class heartbeat final : public packet {
            public:
-            heartbeat(const discovered_nodes& nodes, const std::chrono::milliseconds& interval,
-                      const std::uint32_t& seq_n);
+            heartbeat(const discovered_nodes& nodes, const std::uint32_t& packet_id,
+                      const std::chrono::milliseconds& interval);
             heartbeat(network_payload_ptr payload);
 
+            std::uint32_t packet_id;
             std::uint32_t interval;
             discovered_nodes nodes;
         };
@@ -241,8 +231,7 @@ namespace protocol {
         // DISCONNECT packet
         class disconnect final : public packet {
            public:
-            disconnect(const std::uint32_t& seq_n)
-                : packet(packet_type::disconnect, seq_n) {}  // Serialize constructor
+            disconnect() : packet(packet_type::disconnect) {}  // Serialize constructor
 
             disconnect(network_payload_ptr payload)
                 : packet(packet_type::disconnect, payload) {}  // Deserialize constructor
@@ -250,36 +239,41 @@ namespace protocol {
 
         // Aggregated subscribe container
         class subscription {
+            std::set<std::uint64_t> _topic_hashes;
+            std::set<std::string> _topic_names;
+            network_payload _payload;
+
            public:
-            void add_topic(const std::string& topic);
-            void generate_payload();
-            void parse_payload();
+            void emplace(const std::string& topic);
+            void erase(const std::string& topic);
+            void clear();
+            bool empty();
 
-            std::set<std::uint64_t> topic_hashes;
-            std::set<std::string> topic_names;
-
-            network_payload full_payload;
+            network_payload_ptr generate_payload();
+            void from_payload(network_payload_ptr payload);
         };
 
         // Aggregated publish container
         class publication {
+            std::vector<message_ptr> _messages;
+            network_payload _payload;
+
            public:
-            void add_message(message_ptr message);
-            void generate_payload();
-            void parse_payload();
+            void emplace(message_ptr message);
+            void clear();
+            bool empty();
 
-            std::vector<message_ptr> message;
-
-            network_payload full_payload;
+            network_payload_ptr generate_payload();
+            void from_payload(network_payload_ptr payload);
         };
 
         // SUBSCRIBE/UNSUBSCRIBE packet
         class subscribe_unsubscribe final : public packet {
            public:
-            subscribe_unsubscribe(const packet_type& packet_type, const std::uint32_t& seq_n,
-                                  const std::uint32_t& sub_id);  // Serialize constructor
+            subscribe_unsubscribe(const packet_type& packet_type,
+                                  const std::uint32_t& packet_id);  // Serialize constructor
 
-            std::uint32_t subscription_id;
+            std::uint32_t packet_id;
             std::uint32_t total_blocks;
             std::uint8_t block_n;
         };
@@ -289,10 +283,9 @@ namespace protocol {
         // PUBLISH packet
         class publish final : public packet {
            public:
-            publish(const std::uint32_t seq_n,
-                    const std::uint32_t pub_id);  // Serialize constructor
+            publish(const std::uint32_t& packet_id);  // Serialize constructor
 
-            std::uint32_t publication_id;
+            std::uint32_t packet_id;
             std::uint32_t total_blocks;
             std::uint8_t block_n;
         };
@@ -313,16 +306,22 @@ using namespace boost;
 
 class connection {
    public:
-    connection(const ip_int& ip, const port_int& port)
+    connection(const ip_int& ip, const port_int& port, asio::io_context& ioc)
         : address(ip, port),
           udp_endpoint(asio::ip::udp::endpoint(asio::ip::address_v4(ip), port)),
           udp_receive_buffer(std::make_shared<network_payload>()),
+          unicast_rediscovery_timer(ioc),
+          heartbeat_timer(ioc),
+          nack_timer(ioc),
           state(protocol::v1::connection_state::undiscovered),
           last_sent_packet_type(protocol::v1::packet_type::disconnect),
           last_received_packet_type(protocol::v1::packet_type::disconnect),
-          last_seq_n(protocol::v1::constants::uninit_seq_n),
-          last_pub_id(protocol::v1::constants::uninit_pub_id),
-          last_sub_id(protocol::v1::constants::uninit_sub_id),
+          last_hb_id(protocol::v1::constants::uninit_packet_id),
+          last_sub_id(protocol::v1::constants::uninit_packet_id),
+          last_unsub_id(protocol::v1::constants::uninit_packet_id),
+          last_pub_id(protocol::v1::constants::uninit_packet_id),
+          expected_acks(0),
+          received_acks(0),
           received_nacks(0),
           sent_nacks(0),
           rediscovery_attempts(0) {}
@@ -343,21 +342,21 @@ class connection {
     std::unique_ptr<protocol::v1::publication> publication_incoming_store;
     std::queue<protocol::v1::publish_ptr> publish_outgoing_queue;
     std::queue<protocol::v1::publish_ptr> publish_incoming_queue;
-    std::unique_ptr<asio::steady_timer> unicast_rediscovery_timer;
-    std::unique_ptr<asio::steady_timer> heartbeat_timer;
-    std::unique_ptr<asio::steady_timer> heartbeat_nack_timer;
-    std::unique_ptr<asio::steady_timer> publish_nack_timer;
-    std::unique_ptr<asio::steady_timer> subscribe_nack_timer;
-    std::unique_ptr<asio::steady_timer> unsubscribe_nack_timer;
+    asio::steady_timer unicast_rediscovery_timer;
+    asio::steady_timer heartbeat_timer;
+    asio::steady_timer nack_timer;
     std::chrono::milliseconds heartbeat_interval;
     protocol::v1::connection_state state;
     protocol::v1::packet_type last_sent_packet_type;
     protocol::v1::packet_type last_received_packet_type;
-    std::uint32_t last_seq_n;
-    std::uint32_t last_pub_id;
+    std::uint32_t last_hb_id;
     std::uint32_t last_sub_id;
-    std::uint8_t received_nacks;
-    std::uint8_t sent_nacks;
+    std::uint32_t last_unsub_id;
+    std::uint32_t last_pub_id;
+    std::uint32_t expected_acks;
+    std::uint32_t received_acks;
+    std::uint32_t received_nacks;
+    std::uint32_t sent_nacks;
     std::uint32_t rediscovery_attempts;
 };
 

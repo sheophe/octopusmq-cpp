@@ -143,13 +143,10 @@ ipayload_stream& ipayload_stream::operator>>(std::string& value) {
 
 void ipayload_stream::skip_header() { _iterator += constants::header_size; }
 
-packet::packet(const packet_type& packet_type, const std::uint32_t& seq_n)
-    : magic(constants::magic_number),
-      version(version::v1),
-      type(packet_type),
-      sequence_number(seq_n) {
+packet::packet(const packet_type& packet_type)
+    : magic(constants::magic_number), version(version::v1), type(packet_type) {
     opayload_stream ops(payload);
-    ops << magic << version << type << sequence_number;
+    ops << magic << version << type;
 }
 
 packet::packet(const packet_type& packet_type, network_payload_ptr payload)
@@ -157,13 +154,12 @@ packet::packet(const packet_type& packet_type, network_payload_ptr payload)
     std::uint8_t version_n;
     std::uint8_t type_n;
     ipayload_stream ips(*payload);
-    ips >> magic >> version_n >> type_n >> sequence_number;
+    ips >> magic >> version_n >> type_n;
     if (magic != constants::magic_number) throw invalid_magic_number();
     if (version_n < static_cast<std::uint8_t>(min_version) or
         version_n > static_cast<std::uint8_t>(max_version))
         throw unsupported_version();
     version = static_cast<protocol::version>(version_n);
-    if (sequence_number < constants::min_seq_n) throw invalid_sequence_number();
 }
 
 const std::string packet::type_name() const { return packet_name::from_type(type); }
@@ -179,8 +175,9 @@ packet_kind packet::kind(const packet_type& type) {
 packet_type packet::type_from_payload(const network_payload_ptr& payload) {
     const std::uint8_t type_n =
         *reinterpret_cast<const std::uint8_t*>(payload->data() + constants::type_offset);
-    if (type_n < constants::min_packet_type or type_n == constants::disconnect_nack_typeid or
-        (((type_n & 0x0f) == static_cast<std::uint8_t>(packet_kind::probe)) and
+    if (type_n < constants::min_packet_type or
+        (((type_n & 0x0f) == static_cast<std::uint8_t>(packet_kind::probe) or
+          (type_n & 0x0f) == static_cast<std::uint8_t>(packet_kind::disconnect)) and
          ((type_n & 0xf0) >> 4) != static_cast<std::uint8_t>(packet_family::normal)) or
         ((type_n & 0xf0) >> 4) > constants::max_packet_family or
         (type_n & 0x0f) < constants::min_packet_kind or
@@ -204,8 +201,37 @@ packet_type packet::nack_type(const packet_type& type) {
     }
 }
 
-probe::probe(const ip_int& ip, const port_int& port, const std::uint32_t& seq_n)
-    : packet(packet_type::probe, seq_n), ip(ip), port(port) {
+ack::ack(const packet_type& packet_type, const std::uint32_t& packet_id)
+    : packet(packet_type), packet_id(packet_id) {
+    if (packet::family(type) != packet_family::ack) throw bridge_malformed_packet_constructed();
+    opayload_stream ops(payload);
+    ops << this->packet_id;
+}
+
+ack::ack(const packet_type& packet_type, network_payload_ptr payload)
+    : packet(packet_type, payload) {
+    ipayload_stream ips(*payload);
+    ips.skip_header();
+    ips >> packet_id;
+}
+
+nack::nack(const packet_type& packet_type, const std::uint32_t& packet_id,
+           const std::uint32_t& nack_counter)
+    : packet(packet_type), packet_id(packet_id) {
+    if (packet::family(type) != packet_family::nack) throw bridge_malformed_packet_constructed();
+    opayload_stream ops(payload);
+    ops << this->packet_id << nack_counter;
+}
+
+nack::nack(const packet_type& packet_type, network_payload_ptr payload)
+    : packet(packet_type, payload) {
+    ipayload_stream ips(*payload);
+    ips.skip_header();
+    ips >> packet_id;
+}
+
+probe::probe(const ip_int& ip, const port_int& port)
+    : packet(packet_type::probe), ip(ip), port(port) {
     opayload_stream ops(payload);
     ops << this->ip << this->port;
 }
@@ -216,13 +242,14 @@ probe::probe(network_payload_ptr payload) : packet(packet_type::probe, payload) 
     ips >> ip >> port;
 }
 
-heartbeat::heartbeat(const discovered_nodes& nodes, const std::chrono::milliseconds& interval,
-                     const std::uint32_t& seq_n)
-    : packet(packet_type::heartbeat, seq_n),
+heartbeat::heartbeat(const discovered_nodes& nodes, const std::uint32_t& packet_id,
+                     const std::chrono::milliseconds& interval)
+    : packet(packet_type::heartbeat),
+      packet_id(packet_id),
       interval(static_cast<std::uint32_t>(interval.count())),
       nodes(nodes) {
     opayload_stream ops(payload);
-    ops << this->interval << static_cast<std::uint32_t>(this->nodes.size());
+    ops << this->packet_id << this->interval << static_cast<std::uint32_t>(this->nodes.size());
     for (auto& node : this->nodes) ops << node.first << node.second;
 }
 
@@ -230,7 +257,7 @@ heartbeat::heartbeat(network_payload_ptr payload) : packet(packet_type::heartbea
     ipayload_stream ips(*payload);
     ips.skip_header();
     std::uint32_t list_size;
-    ips >> interval >> list_size;
+    ips >> packet_id >> interval >> list_size;
     if (payload->size() < list_size + sizeof(std::uint32_t)) throw protocol::packet_too_small();
     while (list_size) {
         ip_int address;
@@ -241,34 +268,49 @@ heartbeat::heartbeat(network_payload_ptr payload) : packet(packet_type::heartbea
     }
 }
 
-void subscription::add_topic(const std::string& topic) {
+void subscription::emplace(const std::string& topic) {
     if (scope::valid_topic(topic)) {
-        if (topic.size() + 1 < sizeof(std::uint64_t))
-            topic_names.emplace(topic);
+        // If topic length including null terminator is less that length of hash, store the name.
+        if (topic.size() + 1 < sizeof(std::uint64_t)) _topic_names.emplace(topic);
+        // If not then just store a hash.
         else {
             std::hash<std::string> hasher;
-            topic_hashes.emplace(static_cast<std::uint64_t>(hasher(topic)));
+            _topic_hashes.emplace(static_cast<std::uint64_t>(hasher(topic)));
         }
     } else if (scope::valid_topic_filter(topic))
-        topic_names.emplace(topic);
+        // Topic filters are always stored as plain strings because they include a family of topics
+        // and it's impossible to tell if publication matches any subscription just by having a
+        // subscription topic filter hash.
+        _topic_names.emplace(topic);
 }
 
-void subscription::generate_payload() {
-    opayload_stream ops(full_payload);
-    ops << static_cast<std::uint32_t>(topic_hashes.size());
-    for (auto& hash : topic_hashes) ops << hash;
-    ops << static_cast<std::uint32_t>(topic_names.size());
-    for (auto& name : topic_names) ops << name;
+bool subscription::empty() { return _topic_names.empty() and _topic_hashes.empty(); }
+
+void publication::emplace(const message_ptr message) {
+    if (message) _messages.push_back(message);
 }
 
-void subscription::parse_payload() {
-    ipayload_stream ips(full_payload);
+void publication::clear() { _messages.clear(); }
+
+bool publication::empty() { return _messages.empty(); }
+
+network_payload_ptr subscription::generate_payload() {
+    opayload_stream ops(_payload);
+    ops << static_cast<std::uint32_t>(_topic_hashes.size());
+    for (auto& hash : _topic_hashes) ops << hash;
+    ops << static_cast<std::uint32_t>(_topic_names.size());
+    for (auto& name : _topic_names) ops << name;
+    return std::make_shared<network_payload>(_payload);
+}
+
+void subscription::from_payload(network_payload_ptr payload) {
+    ipayload_stream ips(*payload);
     std::uint32_t hashes_size;
     ips >> hashes_size;
     while (hashes_size) {
         std::uint64_t hash;
         ips >> hash;
-        topic_hashes.emplace(hash);
+        _topic_hashes.emplace(hash);
         --hashes_size;
     }
     std::uint32_t names_size;
@@ -276,21 +318,20 @@ void subscription::parse_payload() {
     while (names_size) {
         std::string name;
         ips >> name;
-        topic_names.emplace(name);
+        _topic_names.emplace(name);
         --names_size;
     }
 }
 
 subscribe_unsubscribe::subscribe_unsubscribe(const packet_type& packet_type,
-                                             const std::uint32_t& seq_n,
-                                             const std::uint32_t& sub_id)
-    : packet(packet_type, seq_n), subscription_id(sub_id), total_blocks(0), block_n(0) {
+                                             const std::uint32_t& packet_id)
+    : packet(packet_type), packet_id(packet_id), total_blocks(0), block_n(0) {
     if (type != packet_type::subscribe and type != packet_type::unsubscribe)
         throw bridge_malformed_packet_constructed();
 }
 
-publish::publish(const std::uint32_t seq_n, const std::uint32_t pub_id)
-    : packet(packet_type::publish, seq_n), publication_id(pub_id), total_blocks(0), block_n(0) {}
+publish::publish(const std::uint32_t& packet_id)
+    : packet(packet_type::publish), packet_id(packet_id), total_blocks(0), block_n(0) {}
 
 packet_ptr packet_factory::from_payload(const network_payload_ptr& payload,
                                         const std::size_t& size) {
@@ -302,11 +343,12 @@ packet_ptr packet_factory::from_payload(const network_payload_ptr& payload,
             return std::make_unique<probe>(payload);
         case packet_type::heartbeat:
             return std::make_unique<heartbeat>(payload);
+        case packet_type::disconnect:
+            return std::make_unique<disconnect>(payload);
         case packet_type::heartbeat_ack:
         case packet_type::subscribe_ack:
         case packet_type::unsubscribe_ack:
         case packet_type::publish_ack:
-        case packet_type::disconnect_ack:
             return std::make_unique<ack>(type, payload);
         case packet_type::heartbeat_nack:
         case packet_type::subscribe_nack:

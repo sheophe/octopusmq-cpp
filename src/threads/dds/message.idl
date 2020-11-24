@@ -1,18 +1,12 @@
 module octopus_mq {
-
     module dds {
-
         typedef sequence<char> message_payload;
 
-        @topic
-        struct message {
-            unsigned long hash;
-            string mqtt_topic;
+        @topic struct mqtt_message {
             string mqtt_client_id;
+            unsigned long hash;
             message_payload data;
             long data_size;
         };
-
     };
-
 };

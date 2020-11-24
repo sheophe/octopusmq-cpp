@@ -12,12 +12,11 @@ implementation::implementation(const octopus_mq::adapter_settings_ptr adapter_se
       _settings(std::static_pointer_cast<bridge::adapter_settings>(adapter_settings)) {
     // Initialize bridge server
     _server = std::make_unique<server>(
-        _ioc, asio::ip::address_v4(_adapter_settings->phy().netmask()),
-        asio::ip::udp::endpoint(asio::ip::address_v4(_adapter_settings->phy().ip()),
-                                _adapter_settings->port()),
-        _settings, _adapter_settings->name());
+        _ioc,
+        asio::ip::udp::endpoint(asio::ip::address_v4(_settings->phy().ip()), _settings->port()),
+        _settings, _settings->name());
 
-    // Iniitialize error handlers
+    // Initialize error handlers
     _server->set_network_error_handler([this](const boost::system::error_code& ec) {
         // 'Operation cancelled' occurs when control thread stops the broker
         // in midst of some process
@@ -48,6 +47,6 @@ void implementation::stop() {
     }
 }
 
-void implementation::inject_publish(const message_ptr message) { (*message); }
+void implementation::inject_publish(const message_ptr message) { _server->publish(message); }
 
 }  // namespace octopus_mq::bridge
