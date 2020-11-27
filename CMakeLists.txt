@@ -118,7 +118,7 @@ include_directories(
     ${THREADS_DIR}
 )
 
-link_directories(${PROJECT_NAME} ${Boost_LIBRARY_DIRS})
+link_directories(${Boost_LIBRARY_DIRS})
 
 add_executable(${PROJECT_NAME} ${SRC_LIST})
 target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
