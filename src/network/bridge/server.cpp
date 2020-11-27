@@ -219,8 +219,9 @@ void server::handle_udp_polycast_receive(const boost::system::error_code& ec,
             const ip_int ip = static_cast<protocol::v1::probe*>(packet.get())->ip;
             const port_int port = static_cast<protocol::v1::probe*>(packet.get())->port;
 
-            // Process packet only if it wasn't sent from the local endpoint
-            if (_settings->phy().ip() != ip and _settings->port() != port) {
+            // Process packet only if it wasn't sent from the local endpoint. Ports however should
+            // match.
+            if (_settings->phy().ip() != ip and _settings->port() == port) {
                 std::set<connection_ptr>::iterator found_iter = _endpoints.end();
                 for (auto iter = _endpoints.begin(); iter != _endpoints.end(); ++iter)
                     if ((*iter)->address.ip() == ip and (*iter)->address.port() == port) {
