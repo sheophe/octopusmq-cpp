@@ -2,6 +2,7 @@
 #define OCTOMQ_PROTOCOL_H_
 
 #include <cstdint>
+#include <memory>
 #include <string>
 #include <vector>
 
