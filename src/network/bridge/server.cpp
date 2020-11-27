@@ -113,8 +113,8 @@ void server::start_discovery() {
 
 void server::async_polycast_discovery() {
     // Broadcast/multicast probe packet
-    packet_ptr probe = std::make_unique<protocol::v1::probe>(
-        _poly_udp_ep.address().to_v4().to_ulong(), _poly_udp_ep.port());
+    packet_ptr probe =
+        std::make_unique<protocol::v1::probe>(_settings->phy().ip(), _settings->port());
 
     const std::size_t bytes_sent = _udp_socket.send_to(asio::buffer(probe->payload), _poly_udp_ep);
     if (probe->payload.size() < bytes_sent)
@@ -220,7 +220,7 @@ void server::handle_udp_polycast_receive(const boost::system::error_code& ec,
             const port_int port = static_cast<protocol::v1::probe*>(packet.get())->port;
 
             // Process packet only if it wasn't sent from the local endpoint
-            if (_udp_ep.address().to_v4().to_ulong() != ip and _udp_ep.port() != port) {
+            if (_settings->phy().ip() != ip and _settings->port() != port) {
                 std::set<connection_ptr>::iterator found_iter = _endpoints.end();
                 for (auto iter = _endpoints.begin(); iter != _endpoints.end(); ++iter)
                     if ((*iter)->address.ip() == ip and (*iter)->address.port() == port) {
