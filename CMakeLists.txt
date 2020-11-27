@@ -118,12 +118,15 @@ include_directories(
     ${THREADS_DIR}
 )
 
+link_directories(${PROJECT_NAME} ${Boost_LIBRARY_DIRS})
+
 add_executable(${PROJECT_NAME} ${SRC_LIST})
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${BOOST_ASIO_INCLUDE_DIRS})
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
 if (UNIX AND NOT APPLE)
     target_link_libraries(${PROJECT_NAME} PUBLIC stdc++fs)
 endif()
+target_link_libraries(${PROJECT_NAME} PUBLIC ${Boost_LIBRARIES})
 
 if(OCTOMQ_ENABLE_DDS)
     set(OPENDDS_LIBS OpenDDS::Dcps OpenDDS::Tcp OpenDDS::Rtps OpenDDS::Rtps_Udp)
