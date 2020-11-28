@@ -72,10 +72,6 @@ class server {
     void start_discovery();
 
     void async_polycast_discovery();
-    void async_unicast_discovery(const std::set<connection_ptr>::iterator& iter,
-                                 const bool& retry = false);
-    void async_unicast_rediscovery(const connection_ptr& endpoint, const bool& retry = false);
-
     void send_polycast_heartbeat();
     void send_unicast_heartbeat(const connection_ptr& endpoint);
     void async_nack_sender(const connection_ptr& endpoint, const protocol::v1::packet_type& type,
@@ -91,15 +87,6 @@ class server {
     void handle_udp_receive_from(const connection_ptr& endpoint,
                                  const boost::system::error_code& ec,
                                  const std::size_t& bytes_received);
-    void handle_unicast_probe_sent(const std::set<connection_ptr>::iterator& iter,
-                                   const connection_ptr& endpoint,
-                                   const protocol::v1::packet_ptr& packet,
-                                   const boost::system::error_code& ec,
-                                   const std::size_t& bytes_sent, const bool& retry);
-    void handle_unicast_rediscovery_sent(const connection_ptr& endpoint,
-                                         const protocol::v1::packet_ptr& packet,
-                                         const boost::system::error_code& ec,
-                                         const std::size_t& bytes_sent);
 
     void handle_packet(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
     bool is_packet_expected(const connection_ptr& endpoint, const protocol::v1::packet_type& type);

@@ -5,12 +5,8 @@
 
 namespace octopus_mq::bridge {
 
-discovery_range::discovery_range()
-    : from(network::constants::null_ip), to(network::constants::null_ip) {}
-
 adapter_settings::adapter_settings(const nlohmann::json& json)
     : octopus_mq::adapter_settings(protocol_type::bridge, json) {
-    _discovery_settings.mode = transport_mode::broadcast;
     // Parse discovery field
     if (not json.contains(adapter::field_name::discovery))
         throw missing_field_error(adapter::field_name::discovery);
@@ -27,88 +23,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
     if (mode_field.is_string()) {
         mode_name = mode_field.get<std::string>();
 
-        if (mode_name == network::transport_mode_name::unicast) {
-            _transport_mode = transport_mode::unicast;
-            _multicast_hops = 0;
-            // Parsing endpoints for unicast discovery mode
-            discovery_endpoints_format format;
-            discovery_endpoints endpoints;
-
-            if (discovery_field.contains(adapter::field_name::endpoints)) {
-                // Parsing discovery endpoint list
-                const nlohmann::json& endpoints_field =
-                    discovery_field[adapter::field_name::endpoints];
-
-                if (not endpoints_field.is_array())
-                    throw field_type_error(adapter::field_name::discovery,
-                                           adapter::field_name::endpoints);
-
-                std::vector<std::string> endpoints_strvec =
-                    endpoints_field.get<std::vector<std::string>>();
-
-                // Variable 'format' is initialized as 'list', so no need to set it here again
-                format = discovery_endpoints_format::list;
-                endpoints = discovery_list();
-                for (auto& endpoint_string : endpoints_strvec) {
-                    address addr(endpoint_string);
-                    if (addr.ip() == network::constants::null_ip)
-                        throw invalid_bridge_endpoint(endpoint_string);
-                    if ((addr.ip() & phy().netmask()) != phy().net())
-                        throw bridge_range_different_nets();
-                    std::get<discovery_list>(endpoints).push_back(addr.ip());
-                }
-            } else if (discovery_field.contains(adapter::field_name::from) and
-                       discovery_field.contains(adapter::field_name::to)) {
-                const nlohmann::json& from_field = discovery_field[adapter::field_name::from];
-                const nlohmann::json& to_field = discovery_field[adapter::field_name::to];
-
-                if (not from_field.is_string())
-                    throw field_type_error(adapter::field_name::discovery,
-                                           adapter::field_name::from);
-                if (not to_field.is_string())
-                    throw field_type_error(adapter::field_name::discovery, adapter::field_name::to);
-
-                std::string from_string = from_field.get<std::string>();
-                address from_addr(from_string);
-                const ip_int& from_ip = from_addr.ip();
-                if (from_ip == network::constants::null_ip)
-                    throw invalid_bridge_endpoint(from_string);
-
-                std::string to_string = to_field.get<std::string>();
-                address to_addr(to_string);
-                const ip_int& to_ip = to_addr.ip();
-                if (to_ip == network::constants::null_ip) throw invalid_bridge_endpoint(to_string);
-
-                // Currently only supporting endpoints from the same nets
-                if ((from_ip & phy().netmask()) != phy().net() or
-                    (to_ip & phy().netmask()) != phy().net())
-                    throw bridge_range_different_nets();
-
-                // Check if host numbers are sane
-                if (((from_ip & phy().wildcard()) > (to_ip & phy().wildcard())) or
-                    (from_ip < phy().host_min()) or (to_ip > phy().host_max()))
-                    throw invalid_bridge_range();
-
-                format = discovery_endpoints_format::range;
-                endpoints = discovery_range();
-                std::get<discovery_range>(endpoints).from = from_ip;
-                std::get<discovery_range>(endpoints).to = to_ip;
-            } else {
-                // Use full range for selected network interface if no endpoints were specified
-                // in config
-                format = discovery_endpoints_format::range;
-                endpoints = discovery_range();
-                if (ip::is_loopback(phy().ip())) {
-                    std::get<discovery_range>(endpoints).from = network::constants::loopback_ip;
-                    std::get<discovery_range>(endpoints).to = network::constants::loopback_ip;
-                } else {
-                    std::get<discovery_range>(endpoints).from = phy().host_min();
-                    std::get<discovery_range>(endpoints).to = phy().host_max();
-                }
-            }
-
-            this->discovery(format, endpoints);
-        } else if (mode_name == network::transport_mode_name::multicast) {
+        if (mode_name == network::transport_mode_name::multicast) {
             _transport_mode = transport_mode::multicast;
 
             // Parsing multicast group
@@ -241,13 +156,6 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
     timeouts(delay_time, discovery_timeout, acknowledge_timeout, heartbeat_timeout, rescan_timeout);
 }
 
-void adapter_settings::discovery(const discovery_endpoints_format& format,
-                                 const discovery_endpoints& endpoints) {
-    _discovery_settings.mode = transport_mode::unicast;
-    _discovery_settings.format = format;
-    _discovery_settings.endpoints = endpoints;
-}
-
 void adapter_settings::timeouts(const std::chrono::milliseconds& delay,
                                 const std::chrono::milliseconds& discovery,
                                 const std::chrono::milliseconds& acknowledge,
@@ -259,8 +167,6 @@ void adapter_settings::timeouts(const std::chrono::milliseconds& delay,
     _timeouts.heartbeat = heartbeat;
     _timeouts.rescan = rescan;
 }
-
-const discovery_settings& adapter_settings::discovery() const { return _discovery_settings; }
 
 const bridge::timeouts& adapter_settings::timeouts() const { return _timeouts; }
 

@@ -19,9 +19,6 @@ namespace adapter {
 
         constexpr char discovery[] = "discovery";
         constexpr char mode[] = "mode";
-        constexpr char from[] = "from";
-        constexpr char to[] = "to";
-        constexpr char endpoints[] = "endpoints";
         constexpr char group[] = "group";
         constexpr char hops[] = "hops";
         constexpr char send_port[] = "send_port";
@@ -47,27 +44,6 @@ namespace adapter {
 
 }  // namespace adapter
 
-enum class discovery_endpoints_format { list, range };
-
-using discovery_list = std::vector<ip_int>;
-
-class discovery_range {
-   public:
-    discovery_range();
-
-    ip_int from;
-    ip_int to;
-};
-
-using discovery_endpoints = std::variant<discovery_list, discovery_range>;
-
-class discovery_settings {
-   public:
-    transport_mode mode;
-    discovery_endpoints_format format;
-    discovery_endpoints endpoints;
-};
-
 class timeouts {
    public:
     std::chrono::milliseconds delay;
@@ -78,7 +54,6 @@ class timeouts {
 };
 
 class adapter_settings : public octopus_mq::adapter_settings {
-    discovery_settings _discovery_settings;
     timeouts _timeouts;
     transport_mode _transport_mode;
     address _polycast_address;
@@ -90,14 +65,12 @@ class adapter_settings : public octopus_mq::adapter_settings {
 
     // This call will pass discovery settings for unicast and set the mode.
     // Default discovery mode is broadcast.
-    void discovery(const discovery_endpoints_format& format, const discovery_endpoints& endpoints);
     void timeouts(const std::chrono::milliseconds& delay,
                   const std::chrono::milliseconds& discovery,
                   const std::chrono::milliseconds& acknowledge,
                   const std::chrono::milliseconds& heartbeat,
                   const std::chrono::milliseconds& rescan);
 
-    const discovery_settings& discovery() const;
     const class timeouts& timeouts() const;
     const transport_mode& transport_mode() const;
     const address& polycast_address() const;

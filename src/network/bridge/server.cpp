@@ -37,27 +37,10 @@ server::server(asio::io_context& ioc, asio::ip::udp::endpoint&& udp_endpoint,
 
 void server::initialize() {
     _max_nacks = 3;
-    if (_settings->transport_mode() == transport_mode::unicast) {
-        const port_int& send_port = _settings->send_port();
-        if (_settings->discovery().format == discovery_endpoints_format::list) {
-            for (auto& ip : std::get<discovery_list>(_settings->discovery().endpoints))
-                if (ip::is_loopback(ip) or
-                    (asio::ip::udp::endpoint(asio::ip::address_v4(ip), send_port) != _udp_ep))
-                    _endpoints.emplace(std::make_unique<connection>(ip, send_port, _ioc));
-        } else {
-            discovery_range range = std::get<discovery_range>(_settings->discovery().endpoints);
-            for (ip_int ip = range.from; ip <= range.to; ++ip)
-                if (ip::is_loopback(ip) or
-                    (asio::ip::udp::endpoint(asio::ip::address_v4(ip), send_port) != _udp_ep))
-                    _endpoints.emplace(std::make_unique<connection>(ip, send_port, _ioc));
-        }
-    } else {
-        _poly_udp_ep =
-            asio::ip::udp::endpoint(asio::ip::address_v4(_settings->polycast_address().ip()),
-                                    _settings->polycast_address().port());
-        _polycast_receive_buffer =
-            std::make_shared<network_payload>(protocol::v1::constants::packet_size::max);
-    }
+    _poly_udp_ep = asio::ip::udp::endpoint(asio::ip::address_v4(_settings->polycast_address().ip()),
+                                           _settings->polycast_address().port());
+    _polycast_receive_buffer =
+        std::make_shared<network_payload>(protocol::v1::constants::packet_size::max);
 }
 
 void server::run() {
@@ -68,7 +51,7 @@ void server::run() {
         _udp_socket.set_option(asio::socket_base::reuse_address(true));
         if (_settings->transport_mode() == transport_mode::broadcast)
             _udp_socket.set_option(asio::socket_base::broadcast(true));
-        else if (_settings->transport_mode() == transport_mode::multicast) {
+        else {  // Multicast
             _udp_socket.set_option(asio::ip::multicast::join_group(_poly_udp_ep.address().to_v4(),
                                                                    _udp_ep.address().to_v4()));
             _udp_socket.set_option(asio::ip::multicast::hops(_settings->multicast_hops()));
@@ -83,7 +66,7 @@ void server::run() {
         return;
     }
     start_discovery();
-}  // namespace octopus_mq::bridge
+}
 
 void server::stop() {
     _stop_request = true;
@@ -104,14 +87,9 @@ void server::set_protocol_error_handler(protocol_error_handler handler) {
 using namespace protocol::v1;
 
 void server::start_discovery() {
-    if (_settings->transport_mode() == transport_mode::unicast) {
-        _unicast_discovery_delay_timer = std::make_unique<asio::steady_timer>(_ioc);
-        async_unicast_discovery(_endpoints.begin());
-    } else {
-        _polycast_discovery_delay_timer = std::make_unique<asio::steady_timer>(_ioc);
-        async_udp_polycast_listen();
-        async_polycast_discovery();
-    }
+    _polycast_discovery_delay_timer = std::make_unique<asio::steady_timer>(_ioc);
+    async_udp_polycast_listen();
+    async_polycast_discovery();
 }
 
 void server::async_polycast_discovery() {
@@ -133,39 +111,9 @@ void server::async_polycast_discovery() {
     });
 }
 
-void server::async_unicast_discovery(const std::set<connection_ptr>::iterator& iter,
-                                     const bool& retry) {
-    const connection_ptr& endpoint = *iter;
-    if (retry) ++(endpoint->rediscovery_attempts);
-
-    protocol::v1::packet_ptr probe =
-        std::make_unique<protocol::v1::probe>(_udp_ep.address().to_v4().to_ulong(), _udp_ep.port());
-
-    _udp_socket.async_send_to(
-        asio::buffer(probe->payload), endpoint->udp_endpoint,
-        [this, &endpoint, iter = std::move(iter), packet = std::move(probe), retry](
-            const boost::system::error_code& ec, const std::size_t& bytes_sent) {
-            handle_unicast_probe_sent(iter, endpoint, packet, ec, bytes_sent, retry);
-        });
-}
-
-void server::async_unicast_rediscovery(const connection_ptr& endpoint, const bool& retry) {
-    if (retry) ++(endpoint->rediscovery_attempts);
-
-    protocol::v1::packet_ptr probe =
-        std::make_unique<protocol::v1::probe>(_udp_ep.address().to_v4().to_ulong(), _udp_ep.port());
-
-    _udp_socket.async_send_to(
-        asio::buffer(probe->payload), endpoint->udp_endpoint,
-        [this, &endpoint, packet = std::move(probe)](const boost::system::error_code& ec,
-                                                     const std::size_t& bytes_sent) {
-            handle_unicast_rediscovery_sent(endpoint, packet, ec, bytes_sent);
-        });
-}
-
 void server::async_udp_polycast_listen() {
-    _udp_socket.async_receive(
-        asio::buffer(*_polycast_receive_buffer),
+    _udp_socket.async_receive_from(
+        asio::buffer(*_polycast_receive_buffer), _poly_udp_ep,
         [this](const boost::system::error_code& ec, const std::size_t& bytes_received) {
             handle_udp_polycast_receive(ec, bytes_received);
         });
@@ -192,10 +140,9 @@ void server::async_nack_sender(const connection_ptr& endpoint,
         endpoint->state = connection_state::lost;
         endpoint->heartbeat_timer.cancel();
         endpoint->unicast_rediscovery_timer.expires_after(_settings->timeouts().rescan);
-        endpoint->unicast_rediscovery_timer.async_wait(
-            [this, &endpoint](const boost::system::error_code& ec) {
-                if (ec != asio::error::operation_aborted) async_unicast_rediscovery(endpoint);
-            });
+        endpoint->unicast_rediscovery_timer.async_wait([this](const boost::system::error_code& ec) {
+            if (ec != asio::error::operation_aborted) async_polycast_discovery();
+        });
     } else {
         // Send nack packet
         udp_send_to(endpoint,
@@ -267,70 +214,6 @@ void server::handle_udp_receive_from(const connection_ptr& endpoint,
                                          : constants::packet_size::probe;
 
     async_udp_listen_to(endpoint, buffer_size);
-}
-
-void server::handle_unicast_probe_sent(const std::set<connection_ptr>::iterator& iter,
-                                       const connection_ptr& endpoint,
-                                       const protocol::v1::packet_ptr& packet,
-                                       const boost::system::error_code& ec,
-                                       const std::size_t& bytes_sent, const bool& retry) {
-    if (ec) {
-        if (_network_error_handler) _network_error_handler(ec);
-    } else
-        async_udp_listen_to(endpoint, constants::packet_size::max);
-
-    if (packet->payload.size() < bytes_sent and _network_error_handler)
-        _network_error_handler(boost::system::system_error(asio::error::message_size).code());
-
-    log::print_event(_adapter_name, endpoint->address.to_string(), std::string(),
-                     network_event_type::send, packet->type_name());
-
-    // If handler was called on retry attempt, no need to restart the timer and run discovery
-    // again. Also no need to check if endpoint timer is created.
-    if (not retry) {
-        endpoint->last_sent_packet_type = packet->type;
-        endpoint->state = connection_state::discovery_requested;
-
-        auto next = std::next(iter);
-        while (next != _endpoints.end() and next->get()->state == connection_state::discovered)
-            next = std::next(next);
-
-        if (next != _endpoints.end()) {
-            _unicast_discovery_delay_timer->expires_after(_settings->timeouts().delay);
-            _unicast_discovery_delay_timer->async_wait(
-                [this, next = std::move(next)](const boost::system::error_code& ec) {
-                    if (ec and _network_error_handler)
-                        _network_error_handler(ec);
-                    else
-                        async_unicast_discovery(next);
-                });
-        }
-    }
-
-    endpoint->unicast_rediscovery_timer.expires_after(_settings->timeouts().rescan);
-    endpoint->unicast_rediscovery_timer.async_wait(
-        [this, iter = std::move(iter)](const boost::system::error_code& ec) {
-            if (ec != asio::error::operation_aborted) async_unicast_discovery(iter, true);
-        });
-}
-
-void server::handle_unicast_rediscovery_sent(const connection_ptr& endpoint,
-                                             const protocol::v1::packet_ptr& packet,
-                                             const boost::system::error_code& ec,
-                                             const std::size_t& bytes_sent) {
-    if (ec and _network_error_handler) _network_error_handler(ec);
-
-    if (packet->payload.size() < bytes_sent and _network_error_handler)
-        _network_error_handler(boost::system::system_error(asio::error::message_size).code());
-
-    log::print_event(_adapter_name, endpoint->address.to_string(), std::string(),
-                     network_event_type::send, packet->type_name());
-
-    endpoint->unicast_rediscovery_timer.expires_after(_settings->timeouts().rescan);
-    endpoint->unicast_rediscovery_timer.async_wait(
-        [this, &endpoint](const boost::system::error_code& ec) {
-            if (ec != asio::error::operation_aborted) async_unicast_rediscovery(endpoint, true);
-        });
 }
 
 void server::udp_send_to(const connection_ptr& endpoint, packet_ptr packet) {
@@ -437,8 +320,6 @@ void server::handle_probe(const connection_ptr& endpoint) {
     // Rewrite last sequence number to be in sync with discovered endpoint.
     endpoint->state = connection_state::discovered;
 
-    // Start listening to the new endpoint
-    async_udp_listen_to(endpoint, protocol::v1::constants::packet_size::max);
     // Send heartbeat as a response
     send_unicast_heartbeat(endpoint);
 }
