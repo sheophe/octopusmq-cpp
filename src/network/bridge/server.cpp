@@ -66,13 +66,16 @@ void server::run() {
         if (_use_icmp) _icmp_socket->open(asio::ip::icmp::v4());
         _udp_socket.open(asio::ip::udp::v4());
         _udp_socket.set_option(asio::socket_base::reuse_address(true));
-        if (_settings->transport_mode() == transport_mode::broadcast) {
+        if (_settings->transport_mode() == transport_mode::broadcast)
             _udp_socket.set_option(asio::socket_base::broadcast(true));
-        } else if (_settings->transport_mode() == transport_mode::multicast) {
-            _udp_socket.set_option(asio::ip::multicast::join_group(_poly_udp_ep.address()));
+        else if (_settings->transport_mode() == transport_mode::multicast) {
+            _udp_socket.set_option(asio::ip::multicast::join_group(_poly_udp_ep.address().to_v4(),
+                                                                   _udp_ep.address().to_v4()));
             _udp_socket.set_option(asio::ip::multicast::hops(_settings->multicast_hops()));
+            _udp_socket.set_option(
+                asio::ip::multicast::outbound_interface(_udp_ep.address().to_v4()));
         }
-        _udp_socket.bind(_udp_ep);
+        _udp_socket.bind(asio::ip::udp::endpoint(asio::ip::address_v4(), _udp_ep.port()));
     } catch (boost::system::system_error const& e) {
         asio::post(_ioc, [this, ec = e.code()] {
             if (_network_error_handler) _network_error_handler(ec);
@@ -80,7 +83,7 @@ void server::run() {
         return;
     }
     start_discovery();
-}
+}  // namespace octopus_mq::bridge
 
 void server::stop() {
     _stop_request = true;
@@ -219,8 +222,8 @@ void server::handle_udp_polycast_receive(const boost::system::error_code& ec,
             const ip_int ip = static_cast<protocol::v1::probe*>(packet.get())->ip;
             const port_int port = static_cast<protocol::v1::probe*>(packet.get())->port;
 
-            // Process packet only if it wasn't sent from the local endpoint. Ports however should
-            // match.
+            // Process packet only if it wasn't sent from the local endpoint.
+            // Ports however should match.
             if (_settings->phy().ip() != ip and _settings->port() == port) {
                 std::set<connection_ptr>::iterator found_iter = _endpoints.end();
                 for (auto iter = _endpoints.begin(); iter != _endpoints.end(); ++iter)
