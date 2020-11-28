@@ -437,6 +437,8 @@ void server::handle_probe(const connection_ptr& endpoint) {
     // Rewrite last sequence number to be in sync with discovered endpoint.
     endpoint->state = connection_state::discovered;
 
+    // Start listening to the new endpoint
+    async_udp_listen_to(endpoint, protocol::v1::constants::packet_size::max);
     // Send heartbeat as a response
     send_unicast_heartbeat(endpoint);
 }
