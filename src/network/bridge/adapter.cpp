@@ -7,18 +7,8 @@ namespace octopus_mq::bridge {
 
 adapter_settings::adapter_settings(const nlohmann::json& json)
     : octopus_mq::adapter_settings(protocol_type::bridge, json) {
-    // Parse discovery field
-    if (not json.contains(adapter::field_name::discovery))
-        throw missing_field_error(adapter::field_name::discovery);
-
-    const nlohmann::json discovery_field = json[adapter::field_name::discovery];
-    if (not discovery_field.is_object()) throw field_type_error(adapter::field_name::discovery);
-
-    // Parsing discovery mode
-    if (not discovery_field.contains(adapter::field_name::mode))
-        throw missing_field_error(adapter::field_name::discovery, adapter::field_name::mode);
-
-    const nlohmann::json& mode_field = discovery_field[adapter::field_name::mode];
+    // Parsing discovery mode field
+    const nlohmann::json& mode_field = json[adapter::field_name::mode];
     std::string mode_name;
     if (mode_field.is_string()) {
         mode_name = mode_field.get<std::string>();
@@ -27,22 +17,19 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
             _transport_mode = transport_mode::multicast;
 
             // Parsing multicast group
-            if (not discovery_field.contains(adapter::field_name::group))
-                throw missing_field_error(adapter::field_name::discovery,
-                                          adapter::field_name::group);
+            if (not json.contains(adapter::field_name::group))
+                throw missing_field_error(adapter::field_name::group);
 
-            const nlohmann::json& group_field = discovery_field[adapter::field_name::group];
-            if (not group_field.is_string())
-                throw field_type_error(adapter::field_name::discovery, adapter::field_name::group);
+            const nlohmann::json& group_field = json[adapter::field_name::group];
+            if (not group_field.is_string()) throw field_type_error(adapter::field_name::group);
 
             // Parsing multicast TTL
-            if (not discovery_field.contains(adapter::field_name::hops))
-                throw missing_field_error(adapter::field_name::discovery,
-                                          adapter::field_name::hops);
+            if (not json.contains(adapter::field_name::hops))
+                throw missing_field_error(adapter::field_name::hops);
 
-            const nlohmann::json& hops_field = discovery_field[adapter::field_name::hops];
+            const nlohmann::json& hops_field = json[adapter::field_name::hops];
             if (not hops_field.is_number_unsigned())
-                throw field_type_error(adapter::field_name::discovery, adapter::field_name::hops);
+                throw field_type_error(adapter::field_name::hops);
 
             _multicast_hops = hops_field.get<std::uint8_t>();
 
@@ -60,12 +47,11 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
             throw unknown_transport_mode_error(mode_name);
 
         // Parsing optional send_port field
-        if (discovery_field.contains(adapter::field_name::send_port)) {
-            const nlohmann::json& send_port_field = discovery_field[adapter::field_name::send_port];
+        if (json.contains(adapter::field_name::send_port)) {
+            const nlohmann::json& send_port_field = json[adapter::field_name::send_port];
 
             if (not send_port_field.is_number_unsigned())
-                throw field_type_error(adapter::field_name::discovery,
-                                       adapter::field_name::send_port);
+                throw field_type_error(adapter::field_name::send_port);
 
             _send_port = send_port_field.get<std::uint16_t>();
         }
@@ -76,7 +62,7 @@ adapter_settings::adapter_settings(const nlohmann::json& json)
         else
             _send_port = port();
     } else
-        throw field_type_error(adapter::field_name::discovery, adapter::field_name::mode);
+        throw field_type_error(adapter::field_name::mode);
 
     name_append("(udp " + mode_name + ')');
 

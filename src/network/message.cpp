@@ -66,12 +66,15 @@ scope::scope(const std::string &scope_string) : _is_absolute_wildcard(false) {
         else
             throw invalid_topic_filter(scope_string);
     }
+    _scope_strings.emplace(scope_string);
 }
 
 scope::scope(const std::vector<std::string> &scope_vector) : _is_absolute_wildcard(false) {
     for (auto &scope_string : scope_vector) {
         if (scope_string == hash_sign) {
             _scope.clear();
+            _scope_strings.clear();
+            _scope_strings.emplace(scope_string);
             _is_absolute_wildcard = true;
             break;
         }
@@ -79,12 +82,15 @@ scope::scope(const std::vector<std::string> &scope_vector) : _is_absolute_wildca
             _scope.emplace(tokens);
         else
             throw invalid_topic_filter(scope_string);
+        _scope_strings.emplace(scope_string);
     }
 }
 
 bool scope::add(const std::string &topic_filter) {
     if (topic_filter == hash_sign) {
         _scope.clear();
+        _scope_strings.clear();
+        _scope_strings.emplace(topic_filter);
         _is_absolute_wildcard = true;
         return true;
     }
@@ -94,6 +100,7 @@ bool scope::add(const std::string &topic_filter) {
     // Ensure there are no two equal topic filers is scope
     if (std::find(_scope.begin(), _scope.end(), tokens) == _scope.end()) {
         _scope.emplace(tokens);
+        _scope_strings.emplace(topic_filter);
         _is_absolute_wildcard = false;
     }
     return true;
@@ -102,6 +109,7 @@ bool scope::add(const std::string &topic_filter) {
 void scope::remove(const std::string &topic_filter) {
     if (topic_filter == hash_sign) {
         _scope.clear();
+        _scope_strings.clear();
         _is_absolute_wildcard = false;
         return;
     }
@@ -110,21 +118,22 @@ void scope::remove(const std::string &topic_filter) {
     if (tokens.empty()) return;
     if (auto iter = std::find(_scope.begin(), _scope.end(), tokens); iter != _scope.end()) {
         _scope.erase(iter);
+        _scope_strings.erase(topic_filter);
         _is_absolute_wildcard = false;
     }
 }
 
 void scope::clear() {
     _scope.clear();
+    _scope_strings.clear();
     _is_absolute_wildcard = false;
 }
 
 void scope::clear_internal() {
-    for (auto &iter : _scope) {
-        if (iter[0][0] == dollar_sign) {
-            _scope.erase(iter);
-        }
-    }
+    for (auto &iter : _scope)
+        if (iter[0][0] == dollar_sign) _scope.erase(iter);
+    for (auto &iter : _scope_strings)
+        if (iter[0] == dollar_sign) _scope_strings.erase(iter);
 }
 
 scope::topic_tokens scope::tokenize_topic_filter(const std::string &topic_filter) {
@@ -203,7 +212,9 @@ bool scope::compare_topics(const topic_tokens &filter, const topic_tokens &topic
     return true;
 }
 
-bool scope::empty() const { return _scope.empty(); }
+std::size_t scope::size() const { return _scope_strings.size(); }
+
+bool scope::empty() const { return _scope_strings.empty(); }
 
 bool scope::includes(const std::string &topic) const {
     if (_is_absolute_wildcard) return true;
@@ -244,6 +255,8 @@ bool scope::valid_topic_filter(const std::string_view &topic_filter) {
     topic_tokens tokens = tokenize_topic_filter(std::string(topic_filter));
     return not tokens.empty();
 }
+
+const std::set<std::string> &scope::scope_strings() const { return _scope_strings; }
 
 bool scope::matches_filter(const std::string_view &filter, const std::string_view &topic) {
     if (filter == hash_sign) return true;

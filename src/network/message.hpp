@@ -20,7 +20,7 @@ namespace octopus_mq {
 
 namespace mqtt {
 
-    enum class version { v3, v5 };
+    enum class version : std::uint8_t { v3 = 0x03, v5 = 0x05 };
 
     enum class adapter_role { broker, client };
 
@@ -79,6 +79,7 @@ using message_ptr = std::shared_ptr<message>;
 class scope {
     using topic_tokens = std::vector<std::string>;
     std::set<topic_tokens> _scope;
+    std::set<std::string> _scope_strings;
     bool _is_absolute_wildcard;
 
     static constexpr char hash_sign[] = "#";
@@ -101,8 +102,10 @@ class scope {
     void clear_internal();
 
     bool empty() const;
+    std::size_t size() const;
     bool includes(const std::string &topic) const;
     bool contains(const std::string &topic_filter) const;
+    const std::set<std::string> &scope_strings() const;
 
     static bool valid_topic(const std::string_view &topic);
     static bool valid_topic_filter(const std::string_view &topic_filter);

@@ -17,6 +17,8 @@ using ip_int = std::uint32_t;
 using socket_int = std::int32_t;
 using network_payload = std::vector<char>;
 using network_payload_ptr = std::shared_ptr<network_payload>;
+using network_payload_iter_pair =
+    std::pair<network_payload::const_iterator, network_payload::const_iterator>;
 
 namespace network {
 

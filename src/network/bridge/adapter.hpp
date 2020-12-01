@@ -17,13 +17,13 @@ namespace adapter {
 
     namespace field_name {
 
-        constexpr char discovery[] = "discovery";
         constexpr char mode[] = "mode";
         constexpr char group[] = "group";
         constexpr char hops[] = "hops";
         constexpr char send_port[] = "send_port";
-        constexpr char delay[] = "delay";
         constexpr char timeouts[] = "timeouts";
+        constexpr char delay[] = "delay";
+        constexpr char discovery[] = "discovery";
         constexpr char acknowledge[] = "acknowledge";
         constexpr char heartbeat[] = "heartbeat";
         constexpr char rescan[] = "rescan";

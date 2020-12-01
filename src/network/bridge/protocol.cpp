@@ -5,28 +5,23 @@
 #include <map>
 #include <utility>
 
+#include <boost/iostreams/filtering_streambuf.hpp>
+#include <boost/iostreams/filter/bzip2.hpp>
+#include <boost/iostreams/filter/gzip.hpp>
+#include <boost/iostreams/filter/lzma.hpp>
+#include <boost/iostreams/filter/zlib.hpp>
+#include <boost/iostreams/filter/zstd.hpp>
+
 namespace octopus_mq::bridge::protocol::v1 {
 
 static std::map<const packet_type, const std::string> packet_name_map = {
     { packet_type::probe, packet_name::probe },
-    { packet_type::heartbeat, packet_name::heartbeat },
-    { packet_type::subscribe, packet_name::subscribe },
-    { packet_type::unsubscribe, packet_name::unsubscribe },
     { packet_type::publish, packet_name::publish },
-    { packet_type::disconnect, packet_name::disconnect }
+    { packet_type::heartbeat, packet_name::heartbeat },
+    { packet_type::acknack, packet_name::acknack }
 };
 
-const std::string packet_name::from_type(const packet_type& type) {
-    const packet_family family = packet::family(type);
-    switch (family) {
-        case packet_family::normal:
-            return packet_name_map[type];
-        case packet_family::ack:
-            return packet_name::ack;
-        case packet_family::nack:
-            return packet_name::nack;
-    }
-}
+const std::string packet_name::from_type(const packet_type& type) { return packet_name_map[type]; }
 
 opayload_stream::opayload_stream(network_payload& payload) : _payload(payload) {}
 
@@ -72,9 +67,25 @@ opayload_stream& opayload_stream::operator<<(const packet_type& value) {
 }
 
 opayload_stream& opayload_stream::operator<<(const std::string& value) {
-    std::copy(value.begin(), value.end(), std::back_inserter(_payload));
+    const std::size_t original_size = _payload.size();
+    _payload.resize(original_size + value.size());
+    std::copy(value.begin(), value.end(), _payload.begin() + original_size);
     _payload.push_back('\0');
     return *this;
+}
+
+opayload_stream& opayload_stream::operator<<(const network_payload_ptr& value) {
+    const std::size_t original_size = _payload.size();
+    _payload.resize(original_size + value->size());
+    std::copy(value->begin(), value->end(), _payload.begin() + original_size);
+    return *this;
+}
+
+void opayload_stream::push_payload(const network_payload_iter_pair& iter_pair) {
+    const std::size_t payload_size = iter_pair.second - iter_pair.first;
+    network_payload::iterator start_iter = _payload.end();
+    _payload.resize(_payload.size() + payload_size);
+    std::copy(iter_pair.first, iter_pair.second, start_iter);
 }
 
 ipayload_stream::ipayload_stream(const network_payload& payload)
@@ -143,10 +154,18 @@ ipayload_stream& ipayload_stream::operator>>(std::string& value) {
 
 void ipayload_stream::skip_header() { _iterator += constants::header_size; }
 
-packet::packet(const packet_type& packet_type)
-    : magic(constants::magic_number), version(version::v1), type(packet_type) {
+const network_payload::const_iterator& ipayload_stream::current_iterator() const {
+    return _iterator;
+}
+
+packet::packet(const packet_type& packet_type, const address& sender_address)
+    : magic(constants::magic_number),
+      version(version::v1),
+      type(packet_type),
+      sender_address(sender_address) {
     opayload_stream ops(payload);
-    ops << magic << version << type;
+    ops << this->magic << this->version << this->type << this->sender_address.ip()
+        << this->sender_address.port();
 }
 
 packet::packet(const packet_type& packet_type, network_payload_ptr payload)
@@ -160,131 +179,83 @@ packet::packet(const packet_type& packet_type, network_payload_ptr payload)
         version_n > static_cast<std::uint8_t>(max_version))
         throw unsupported_version();
     version = static_cast<protocol::version>(version_n);
+    ip_int sender_ip = network::constants::null_ip;
+    port_int sender_port = network::constants::null_port;
+    ips >> sender_ip >> sender_port;
+    sender_address = address(sender_ip, sender_port);
 }
 
 const std::string packet::type_name() const { return packet_name::from_type(type); }
 
-packet_family packet::family(const packet_type& type) {
-    return static_cast<packet_family>(static_cast<std::uint8_t>(type) & 0xf0);
-}
-
-packet_kind packet::kind(const packet_type& type) {
-    return static_cast<packet_kind>(static_cast<std::uint8_t>(type) & 0xf0);
-}
-
-packet_type packet::type_from_payload(const network_payload_ptr& payload) {
+std::pair<packet_type, address> packet::meta_from_payload(const network_payload_ptr& payload) {
+    const char* payload_data = payload->data();
     const std::uint8_t type_n =
-        *reinterpret_cast<const std::uint8_t*>(payload->data() + constants::type_offset);
-    if (type_n < constants::min_packet_type or
-        (((type_n & 0x0f) == static_cast<std::uint8_t>(packet_kind::probe) or
-          (type_n & 0x0f) == static_cast<std::uint8_t>(packet_kind::disconnect)) and
-         ((type_n & 0xf0) >> 4) != static_cast<std::uint8_t>(packet_family::normal)) or
-        ((type_n & 0xf0) >> 4) > constants::max_packet_family or
-        (type_n & 0x0f) < constants::min_packet_kind or
-        (type_n & 0x0f) > constants::max_packet_kind)
-        throw invalid_packet_type();
-    return static_cast<packet_type>(type_n);
+        static_cast<const std::uint8_t>(*(payload_data + constants::type_offset));
+    ip_int ip = network::constants::null_ip;
+    port_int port = network::constants::null_port;
+    std::copy(payload_data + constants::ip_offset,
+              payload_data + constants::ip_offset + constants::ip_size, &ip);
+    std::copy(payload_data + constants::port_offset,
+              payload_data + constants::port_offset + constants::port_size, &port);
+    return std::make_pair(static_cast<packet_type>(type_n), address(ip, port));
 }
 
-packet_type packet::nack_type(const packet_type& type) {
-    switch (type) {
-        case packet_type::heartbeat:
-            return packet_type::heartbeat_nack;
-        case packet_type::publish:
-            return packet_type::publish_nack;
-        case packet_type::subscribe:
-            return packet_type::subscribe_nack;
-        case packet_type::unsubscribe:
-            return packet_type::unsubscribe_nack;
-        default:
-            throw protocol::nack_does_not_exist();
-    }
-}
-
-ack::ack(const packet_type& packet_type, const std::uint32_t& packet_id)
-    : packet(packet_type), packet_id(packet_id) {
-    if (packet::family(type) != packet_family::ack) throw bridge_malformed_packet_constructed();
+probe::probe(const address& sender_address, const scope& sender_scope)
+    : packet(packet_type::probe, sender_address), sender_scope(sender_scope) {
     opayload_stream ops(payload);
-    ops << this->packet_id;
-}
-
-ack::ack(const packet_type& packet_type, network_payload_ptr payload)
-    : packet(packet_type, payload) {
-    ipayload_stream ips(*payload);
-    ips.skip_header();
-    ips >> packet_id;
-}
-
-nack::nack(const packet_type& packet_type, const std::uint32_t& packet_id,
-           const std::uint32_t& nack_counter)
-    : packet(packet_type), packet_id(packet_id) {
-    if (packet::family(type) != packet_family::nack) throw bridge_malformed_packet_constructed();
-    opayload_stream ops(payload);
-    ops << this->packet_id << nack_counter;
-}
-
-nack::nack(const packet_type& packet_type, network_payload_ptr payload)
-    : packet(packet_type, payload) {
-    ipayload_stream ips(*payload);
-    ips.skip_header();
-    ips >> packet_id;
-}
-
-probe::probe(const ip_int& ip, const port_int& port)
-    : packet(packet_type::probe), ip(ip), port(port) {
-    opayload_stream ops(payload);
-    ops << this->ip << this->port;
+    ops << static_cast<std::uint32_t>(this->sender_scope.size());
+    for (auto& scope_string : this->sender_scope.scope_strings()) ops << scope_string;
 }
 
 probe::probe(network_payload_ptr payload) : packet(packet_type::probe, payload) {
     ipayload_stream ips(*payload);
     ips.skip_header();
-    ips >> ip >> port;
+    std::uint32_t scope_size = 0;
+    ips >> scope_size;
+    while (scope_size) {
+        std::string scope_string;
+        ips >> scope_string;
+        sender_scope.add(scope_string);
+        --scope_size;
+    }
 }
 
-heartbeat::heartbeat(const discovered_nodes& nodes, const std::uint32_t& packet_id,
-                     const std::chrono::milliseconds& interval)
-    : packet(packet_type::heartbeat),
+heartbeat::heartbeat(const address& sender_address, const std::uint32_t& packet_id,
+                     const std::chrono::milliseconds& interval,
+                     const std::vector<std::uint64_t>& published_hashes)
+    : packet(packet_type::heartbeat, sender_address),
       packet_id(packet_id),
       interval(static_cast<std::uint32_t>(interval.count())),
-      nodes(nodes) {
+      published_n(published_hashes.size()) {
     opayload_stream ops(payload);
-    ops << this->packet_id << this->interval << static_cast<std::uint32_t>(this->nodes.size());
-    for (auto& node : this->nodes) ops << node.first << node.second;
+    ops << this->packet_id << this->interval << this->published_n;
+    for (auto& hash : published_hashes) ops << hash;
 }
 
 heartbeat::heartbeat(network_payload_ptr payload) : packet(packet_type::heartbeat, payload) {
     ipayload_stream ips(*payload);
     ips.skip_header();
-    std::uint32_t list_size;
-    ips >> packet_id >> interval >> list_size;
-    if (payload->size() < list_size + sizeof(std::uint32_t)) throw protocol::packet_too_small();
-    while (list_size) {
-        ip_int address;
-        port_int port;
-        ips >> address >> port;
-        nodes.emplace(std::make_pair(address, port));
-        --list_size;
+    ips >> packet_id >> interval >> published_n;
+    while (published_n) {
+        std::uint64_t published_hash = 0;
+        ips >> published_hash;
+        published_hashes.push_back(published_hash);
+        --published_n;
     }
+    published_n = published_hashes.size();
 }
 
-void subscription::emplace(const std::string& topic) {
-    if (scope::valid_topic(topic)) {
-        // If topic length including null terminator is less that length of hash, store the name.
-        if (topic.size() + 1 < sizeof(std::uint64_t)) _topic_names.emplace(topic);
-        // If not then just store a hash.
-        else {
-            std::hash<std::string> hasher;
-            _topic_hashes.emplace(static_cast<std::uint64_t>(hasher(topic)));
-        }
-    } else if (scope::valid_topic_filter(topic))
-        // Topic filters are always stored as plain strings because they include a family of topics
-        // and it's impossible to tell if publication matches any subscription just by having a
-        // subscription topic filter hash.
-        _topic_names.emplace(topic);
+acknack::acknack(const address& sender_address, const std::uint32_t& packet_id)
+    : packet(packet_type::acknack, sender_address), packet_id(packet_id) {
+    opayload_stream ops(payload);
+    ops << this->packet_id;
 }
 
-bool subscription::empty() { return _topic_names.empty() and _topic_hashes.empty(); }
+acknack::acknack(network_payload_ptr payload) : packet(packet_type::acknack, payload) {
+    ipayload_stream ips(*payload);
+    ips.skip_header();
+    ips >> packet_id;
+}
 
 void publication::emplace(const message_ptr message) {
     if (message) _messages.push_back(message);
@@ -294,67 +265,97 @@ void publication::clear() { _messages.clear(); }
 
 bool publication::empty() { return _messages.empty(); }
 
-network_payload_ptr subscription::generate_payload() {
-    opayload_stream ops(_payload);
-    ops << static_cast<std::uint32_t>(_topic_hashes.size());
-    for (auto& hash : _topic_hashes) ops << hash;
-    ops << static_cast<std::uint32_t>(_topic_names.size());
-    for (auto& name : _topic_names) ops << name;
-    return std::make_shared<network_payload>(_payload);
+std::size_t publication::total_blocks() const { return _total_blocks; }
+
+compression_type publication::compression() const { return _compression; }
+
+void publication::read(network_payload_iter_pair& block_iterators) {
+    if (_payload.empty()) {
+        block_iterators.first = _payload.end();
+        block_iterators.second = block_iterators.first;
+    } else {
+        network_payload::const_iterator block_end =
+            (_iter > _payload.end()) ? _payload.end()
+                                     : _iter + constants::packet_size::max_publish_payload;
+        block_iterators = std::make_pair(_iter, block_end);
+        _iter += constants::packet_size::max_publish_payload;
+    }
 }
 
-void subscription::from_payload(network_payload_ptr payload) {
+void publication::generate_payload(const compression_type& compression) {
+    _compression = compression;
+    network_payload uncompressed_payload;
+    opayload_stream uops(uncompressed_payload);
+    for (auto& message : _messages) {
+        const mqtt::version& mqtt_version = message->mqtt_version();
+        const address& message_origin = message->origin_addr();
+        uops << message_origin.ip() << message_origin.port() << message->origin_clid()
+             << message->topic() << static_cast<std::uint8_t>(mqtt_version) << message->pubopts()
+             << static_cast<std::uint32_t>(message->payload().size());
+        if (mqtt_version == mqtt::version::v5) {
+            // TODO: add props to payload.
+        }
+        uops.push_payload(std::make_pair(message->payload().begin(), message->payload().end()));
+    }
+    // TODO: Actually compress uncomressed_payload and store it in _payload.
+    _payload = uncompressed_payload;
+}
+
+std::uint64_t publish::checksum(const network_payload_iter_pair& iters) {
+    // TODO: WRITE THE ACTUAL CODE
+    return iters.second - iters.first;
+}
+
+publish::publish(const address& sender_address, const std::uint32_t& packet_id, publication_ptr pub,
+                 const std::size_t& block_number)
+    : packet(packet_type::publish, sender_address),
+      packet_id(packet_id),
+      compression(pub->compression()),
+      total_blocks(pub->total_blocks()),
+      block_n(block_number),
+      block_size(0),
+      block_hash(0) {
+    network_payload_iter_pair iters;
+    pub->read(iters);
+    opayload_stream ops(payload);
+    ops << this->packet_id << static_cast<std::uint8_t>(this->compression) << this->total_blocks
+        << this->block_n << static_cast<std::uint32_t>(iters.second - iters.first)
+        << this->checksum(iters);
+    ops.push_payload(iters);
+}
+
+publish::publish(network_payload_ptr payload) : packet(packet_type::publish, payload) {
     ipayload_stream ips(*payload);
-    std::uint32_t hashes_size;
-    ips >> hashes_size;
-    while (hashes_size) {
-        std::uint64_t hash;
-        ips >> hash;
-        _topic_hashes.emplace(hash);
-        --hashes_size;
-    }
-    std::uint32_t names_size;
-    ips >> names_size;
-    while (names_size) {
-        std::string name;
-        ips >> name;
-        _topic_names.emplace(name);
-        --names_size;
-    }
+    ips.skip_header();
+    std::uint8_t compression_int = 0;
+    ips >> this->packet_id >> compression_int >> this->total_blocks >> this->block_n >>
+        this->block_size >> this->block_hash;
+    compression = static_cast<compression_type>(compression_int);
+    const network_payload::const_iterator begin_iterator = ips.current_iterator();
+    const network_payload::const_iterator end_iterator = begin_iterator + this->block_size;
+    if (end_iterator > payload->end()) throw bridge_malformed_packet(packet_name::publish);
+    compressed_payload_block.resize(this->block_size);
+    std::copy(begin_iterator, end_iterator, compressed_payload_block.begin());
 }
-
-subscribe_unsubscribe::subscribe_unsubscribe(const packet_type& packet_type,
-                                             const std::uint32_t& packet_id)
-    : packet(packet_type), packet_id(packet_id), total_blocks(0), block_n(0) {
-    if (type != packet_type::subscribe and type != packet_type::unsubscribe)
-        throw bridge_malformed_packet_constructed();
-}
-
-publish::publish(const std::uint32_t& packet_id)
-    : packet(packet_type::publish), packet_id(packet_id), total_blocks(0), block_n(0) {}
 
 packet_ptr packet_factory::from_payload(const network_payload_ptr& payload,
                                         const std::size_t& size) {
     if (size < constants::header_size) throw packet_too_small();
 
-    packet_type type = packet::type_from_payload(payload);
-    switch (type) {
+    const std::uint8_t type_int =
+        static_cast<std::uint8_t>(*(payload.get()->data() + constants::type_offset));
+    if (type_int < constants::min_type or type_int > constants::max_type)
+        throw invalid_packet_type();
+
+    switch (static_cast<packet_type>(type_int)) {
         case packet_type::probe:
             return std::make_unique<probe>(payload);
+        case packet_type::publish:
+            return std::make_unique<publish>(payload);
         case packet_type::heartbeat:
             return std::make_unique<heartbeat>(payload);
-        case packet_type::disconnect:
-            return std::make_unique<disconnect>(payload);
-        case packet_type::heartbeat_ack:
-        case packet_type::subscribe_ack:
-        case packet_type::unsubscribe_ack:
-        case packet_type::publish_ack:
-            return std::make_unique<ack>(type, payload);
-        case packet_type::heartbeat_nack:
-        case packet_type::subscribe_nack:
-        case packet_type::unsubscribe_nack:
-        case packet_type::publish_nack:
-            return std::make_unique<nack>(type, payload);
+        case packet_type::acknack:
+            return std::make_unique<acknack>(payload);
         default:
             return nullptr;
     }
