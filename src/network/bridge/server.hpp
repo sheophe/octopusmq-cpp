@@ -62,7 +62,7 @@ class server {
     void async_polycast_probe();
     void send_polycast_heartbeat();
     void async_polycast_listen();
-    void async_listen_to(const connection_ptr& endpoint, const std::size_t& buffer_size);
+    void async_listen_to(const connection_ptr& endpoint);
     void sync_send_to(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
 
     // Internal handlers
@@ -72,10 +72,9 @@ class server {
                              const std::size_t& bytes_received);
 
     void handle_packet(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
-    bool is_packet_expected(const connection_ptr& endpoint, const protocol::v1::packet_type& type);
 
     // Packet handlers
-    void handle_probe(const connection_ptr& endpoint);
+    void handle_probe(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
     void handle_publish(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
     void handle_heartbeat(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
     void handle_acknack(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);

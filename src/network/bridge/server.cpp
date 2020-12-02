@@ -94,9 +94,8 @@ void server::async_polycast_listen() {
         });
 }
 
-void server::async_listen_to(const connection_ptr& endpoint, const std::size_t& buffer_size) {
+void server::async_listen_to(const connection_ptr& endpoint) {
     const network_payload_ptr& receive_buffer = endpoint->udp_receive_buffer;
-    if (receive_buffer->size() != buffer_size) receive_buffer->resize(buffer_size);
     _udp_socket.async_receive_from(
         asio::buffer(*receive_buffer), endpoint->udp_endpoint,
         [this, &endpoint](const boost::system::error_code& ec, const std::size_t& bytes_received) {
@@ -159,11 +158,7 @@ void server::handle_receive_from(const connection_ptr& endpoint,
         if (_network_error_handler) _network_error_handler(error.code());
     }
 
-    const std::size_t& buffer_size = (endpoint->state == connection_state::discovered)
-                                         ? constants::packet_size::max
-                                         : constants::packet_size::probe;
-
-    async_listen_to(endpoint, buffer_size);
+    async_listen_to(endpoint);
 }
 
 void server::sync_send_to(const connection_ptr& endpoint, packet_ptr packet) {
@@ -177,24 +172,6 @@ void server::sync_send_to(const connection_ptr& endpoint, packet_ptr packet) {
                      network_event_type::send, packet->type_name());
 }
 
-bool server::is_packet_expected(const connection_ptr& endpoint, const packet_type& type) {
-    const connection_state& state = endpoint->state;
-
-    if ((state == connection_state::undiscovered) or (state == connection_state::disconnected))
-        // First packet from yet undiscovered or disconnected endpoint.
-        // Only 'probe' is accepted as a first incoming packet.
-        return type == packet_type::probe;
-
-    if (state == connection_state::discovery_requested)
-        // First packet from endpoint to which 'probe' packet has been sent.
-        // Only 'probe' and 'heartbeat' are accepted as first incoming packets.
-        return (type == packet_type::probe) or (type == packet_type::heartbeat);
-
-    // Considering the possibility of out-of-order packets anything could happen after connection
-    // has been established.
-    return true;
-}
-
 void server::handle_packet(const connection_ptr& endpoint, packet_ptr packet) {
     const packet_type& type = packet->type;
     const std::string address = endpoint->address.to_string();
@@ -203,13 +180,9 @@ void server::handle_packet(const connection_ptr& endpoint, packet_ptr packet) {
                      packet->type_name());
 
     endpoint->last_received_packet_type = type;
-    endpoint->rediscovery_attempts = 0;
-    endpoint->sent_nacks = 0;
-
-    // Handle packet based on its type
     switch (type) {
         case packet_type::probe:
-            handle_probe(endpoint);
+            handle_probe(endpoint, std::move(packet));
             break;
         case packet_type::heartbeat:
             handle_heartbeat(endpoint, std::move(packet));
@@ -225,14 +198,12 @@ void server::handle_packet(const connection_ptr& endpoint, packet_ptr packet) {
     }
 }
 
-void server::handle_probe(const connection_ptr& endpoint) {
-    // Rewrite last sequence number to be in sync with discovered endpoint.
-    endpoint->state = connection_state::discovered;
+void server::handle_probe(const connection_ptr& endpoint, protocol::v1::packet_ptr packet) {
+    endpoint->scope = static_cast<protocol::v1::probe*>(packet.get())->sender_scope;
 }
 
 void server::handle_heartbeat(const connection_ptr& endpoint, protocol::v1::packet_ptr packet) {
-    endpoint->last_hb_id = static_cast<protocol::v1::heartbeat*>(packet.get())->packet_id;
-    endpoint->state = connection_state::discovered;
+    endpoint->last_heartbeat_id = static_cast<protocol::v1::heartbeat*>(packet.get())->packet_id;
 }
 
 }  // namespace octopus_mq::bridge

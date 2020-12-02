@@ -26,15 +26,6 @@ namespace protocol {
 
     namespace v1 {
 
-        enum class connection_state : std::uint8_t {
-            undiscovered = 0x00,  // Node was not yet discovered (initial state)
-            discovery_requested,  // Discovery request was sent to node
-            discovered,           // Node successfully "connected"
-            nacking,              // Node didn't sent ack and server is now sending nacks
-            lost,                 // Node stopped responding. Discovery should restart
-            disconnected          // Node disconnected gracefully. No need to start discovery again
-        };
-
         enum class packet_type : std::uint8_t {
             probe = 0x01,
             publish = 0x02,
@@ -263,16 +254,10 @@ class connection {
           udp_endpoint(asio::ip::udp::endpoint(asio::ip::address_v4(ip), port)),
           udp_receive_buffer(std::make_shared<network_payload>()),
           heartbeat_timer(ioc),
-          state(protocol::v1::connection_state::undiscovered),
           last_sent_packet_type(protocol::v1::packet_type::acknack),
           last_received_packet_type(protocol::v1::packet_type::acknack),
-          last_hb_id(protocol::v1::constants::uninit_packet_id),
-          last_pub_id(protocol::v1::constants::uninit_packet_id),
-          expected_acks(0),
-          received_acks(0),
-          received_nacks(0),
-          sent_nacks(0),
-          rediscovery_attempts(0) {}
+          last_heartbeat_id(protocol::v1::constants::uninit_packet_id),
+          last_publish_id(protocol::v1::constants::uninit_packet_id) {}
 
     scope scope;
     address address;
@@ -284,16 +269,10 @@ class connection {
     std::queue<protocol::v1::publish_ptr> publish_incoming_queue;
     asio::steady_timer heartbeat_timer;
     std::chrono::milliseconds heartbeat_interval;
-    protocol::v1::connection_state state;
     protocol::v1::packet_type last_sent_packet_type;
     protocol::v1::packet_type last_received_packet_type;
-    std::uint32_t last_hb_id;
-    std::uint32_t last_pub_id;
-    std::uint32_t expected_acks;
-    std::uint32_t received_acks;
-    std::uint32_t received_nacks;
-    std::uint32_t sent_nacks;
-    std::uint32_t rediscovery_attempts;
+    std::uint32_t last_heartbeat_id;
+    std::uint32_t last_publish_id;
 };
 
 using connection_ptr = std::unique_ptr<connection>;
