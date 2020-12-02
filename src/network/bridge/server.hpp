@@ -28,22 +28,19 @@ class server {
     asio::ip::udp::endpoint _poly_udp_ep;
     asio::ip::udp::socket _udp_socket;
     adapter_settings_ptr _settings;
+    asio::steady_timer _polycast_discovery_delay_timer;
+    network_payload_ptr _polycast_receive_buffer;
+    std::uint32_t _max_nacks;
     const std::string _adapter_name;
 
     // Members initialized in constructor body or in runtime
     bool _stop_request;
     std::set<connection_ptr> _endpoints;
-    std::unique_ptr<asio::steady_timer> _unicast_discovery_delay_timer;
-    std::unique_ptr<asio::steady_timer> _polycast_discovery_delay_timer;
-    network_payload_ptr _polycast_receive_buffer;
     std::queue<message_ptr> _publish_queue;
-    std::uint32_t _max_nacks;
 
     // External handlers
     network_error_handler _network_error_handler;
     protocol_error_handler _protocol_error_handler;
-
-    void initialize();
 
    public:
     server(asio::io_context& ioc, asio::ip::udp::endpoint&& udp_endpoint,
@@ -79,9 +76,9 @@ class server {
 
     // Packet handlers
     void handle_probe(const connection_ptr& endpoint);
+    void handle_publish(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
     void handle_heartbeat(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
     void handle_acknack(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
-    void handle_publish(const connection_ptr& endpoint, protocol::v1::packet_ptr packet);
 };
 
 }  // namespace octopus_mq::bridge

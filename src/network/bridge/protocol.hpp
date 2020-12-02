@@ -278,8 +278,8 @@ class connection {
     address address;
     asio::ip::udp::endpoint udp_endpoint;
     network_payload_ptr udp_receive_buffer;
-    std::unique_ptr<protocol::v1::publication> publication_outgoing_store;
-    std::unique_ptr<protocol::v1::publication> publication_incoming_store;
+    protocol::v1::publication_ptr publication_outgoing_store;
+    protocol::v1::publication_ptr publication_incoming_store;
     std::queue<protocol::v1::publish_ptr> publish_outgoing_queue;
     std::queue<protocol::v1::publish_ptr> publish_incoming_queue;
     asio::steady_timer heartbeat_timer;

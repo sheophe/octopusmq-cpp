@@ -13,16 +13,13 @@ server::server(asio::io_context& ioc, asio::ip::udp::endpoint&& udp_endpoint,
       _udp_ep(std::forward<asio::ip::udp::endpoint>(udp_endpoint)),
       _udp_socket(_ioc),
       _settings(settings),
+      _polycast_discovery_delay_timer(_ioc),
+      _polycast_receive_buffer(
+          std::make_shared<network_payload>(protocol::v1::constants::packet_size::max)),
+      _max_nacks(protocol::v1::constants::max_nacks_count),
       _adapter_name(adapter_name) {
-    initialize();
-}
-
-void server::initialize() {
-    _max_nacks = 3;
     _poly_udp_ep = asio::ip::udp::endpoint(asio::ip::address_v4(_settings->polycast_address().ip()),
                                            _settings->polycast_address().port());
-    _polycast_receive_buffer =
-        std::make_shared<network_payload>(protocol::v1::constants::packet_size::max);
 }
 
 void server::run() {
@@ -66,7 +63,6 @@ void server::set_protocol_error_handler(protocol_error_handler handler) {
 using namespace protocol::v1;
 
 void server::start_discovery() {
-    _polycast_discovery_delay_timer = std::make_unique<asio::steady_timer>(_ioc);
     async_polycast_listen();
     async_polycast_probe();
 }
@@ -84,8 +80,8 @@ void server::async_polycast_probe() {
                      network_event_type::send, probe->type_name());
 
     // Restart the timer for next probe broadcast/multicast
-    _polycast_discovery_delay_timer->expires_after(_settings->timeouts().discovery);
-    _polycast_discovery_delay_timer->async_wait([this](const boost::system::error_code& ec) {
+    _polycast_discovery_delay_timer.expires_after(_settings->timeouts().discovery);
+    _polycast_discovery_delay_timer.async_wait([this](const boost::system::error_code& ec) {
         if (ec != asio::error::operation_aborted) async_polycast_probe();
     });
 }
