@@ -11,7 +11,7 @@ option(OCTOMQ_ENABLE_MQTT_CLIENT "Enable MQTT client adapter" OFF)
 option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" OFF)
 option(OCTOMQ_USE_STATIC_LIBS "Use static linkage to Boost libraries" OFF)
 
-find_package(Boost 1.66.0 REQUIRED COMPONENTS system)
+find_package(Boost 1.66.0 REQUIRED COMPONENTS system iostreams)
 find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
 
 if(OCTOMQ_ENABLE_TLS)

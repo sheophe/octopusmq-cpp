@@ -297,8 +297,34 @@ void publication::generate_payload(const compression_type& compression) {
         }
         uops.push_payload(std::make_pair(message->payload().begin(), message->payload().end()));
     }
-    // TODO: Actually compress uncomressed_payload and store it in _payload.
-    _payload = uncompressed_payload;
+    if (_compression == compression_type::none)
+        _payload = uncompressed_payload;
+    else {
+        boost::iostreams::filtering_streambuf<boost::iostreams::input> compression_sb;
+        switch (_compression) {
+            case compression_type::bzip2:
+                compression_sb.push(boost::iostreams::bzip2_compressor());
+                break;
+            case compression_type::gzip:
+                compression_sb.push(boost::iostreams::gzip_compressor());
+                break;
+            case compression_type::lzma:
+                compression_sb.push(boost::iostreams::lzma_compressor());
+                break;
+            case compression_type::zlib:
+                compression_sb.push(boost::iostreams::zlib_compressor());
+                break;
+            case compression_type::zstd:
+                compression_sb.push(boost::iostreams::zstd_compressor());
+                break;
+            default:
+                break;
+        }
+        auto source = boost::iostreams::array_source(uncompressed_payload.data(),
+                                                     uncompressed_payload.size());
+        compression_sb.push(source);
+        _payload.assign(std::istreambuf_iterator<char>{ &compression_sb }, {});
+    }
 }
 
 std::uint64_t publish::checksum(const network_payload_iter_pair& iters) {

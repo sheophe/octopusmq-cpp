@@ -184,14 +184,14 @@ void server::handle_packet(const connection_ptr& endpoint, packet_ptr packet) {
         case packet_type::probe:
             handle_probe(endpoint, std::move(packet));
             break;
+        case packet_type::publish:
+            handle_publish(endpoint, std::move(packet));
+            break;
         case packet_type::heartbeat:
             handle_heartbeat(endpoint, std::move(packet));
             break;
             // case packet_type::acknack:
             //     handle_acknack(endpoint, std::move(packet));
-            //     break;
-            // case packet_type::publish:
-            //     handle_publish(endpoint, std::move(packet));
             //     break;
         default:
             break;
@@ -200,6 +200,10 @@ void server::handle_packet(const connection_ptr& endpoint, packet_ptr packet) {
 
 void server::handle_probe(const connection_ptr& endpoint, protocol::v1::packet_ptr packet) {
     endpoint->scope = static_cast<protocol::v1::probe*>(packet.get())->sender_scope;
+}
+
+void server::handle_publish(const connection_ptr& endpoint, protocol::v1::packet_ptr packet) {
+    endpoint->last_publish_id = static_cast<protocol::v1::publish*>(packet.get())->packet_id;
 }
 
 void server::handle_heartbeat(const connection_ptr& endpoint, protocol::v1::packet_ptr packet) {
