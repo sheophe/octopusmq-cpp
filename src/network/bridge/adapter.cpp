@@ -8,6 +8,9 @@ namespace octopus_mq::bridge {
 adapter_settings::adapter_settings(const nlohmann::json& json)
     : octopus_mq::adapter_settings(protocol_type::bridge, json) {
     // Parsing discovery mode field
+    if (not json.contains(adapter::field_name::mode))
+        throw missing_field_error(adapter::field_name::mode);
+
     const nlohmann::json& mode_field = json[adapter::field_name::mode];
     std::string mode_name;
     if (mode_field.is_string()) {
