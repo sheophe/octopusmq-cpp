@@ -10,8 +10,7 @@ option(OCTOMQ_ENABLE_MQTT_CLIENT "Enable MQTT client adapter" OFF)
 option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" OFF)
 option(OCTOMQ_USE_STATIC_LIBS "Use static linkage to Boost libraries" OFF)
 
-find_package(Boost 1.66.0 REQUIRED)
-find_path(BOOST_ASIO_INCLUDE_DIRS boost/asio.hpp)
+find_package(Boost 1.66.0 REQUIRED COMPONENTS system filesystem)
 
 if(OCTOMQ_ENABLE_TLS)
     message(STATUS "Building with TLS support")
@@ -99,12 +98,11 @@ include_directories(
     ${THREADS_DIR}
 )
 
+link_directories(${Boost_LIBRARY_DIRS})
+
 add_executable(${PROJECT_NAME} ${SRC_LIST})
-target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${BOOST_ASIO_INCLUDE_DIRS})
-target_link_libraries(${PROJECT_NAME} PUBLIC pthread)
-if (UNIX AND NOT APPLE)
-    target_link_libraries(${PROJECT_NAME} PUBLIC stdc++fs)
-endif()
+target_include_directories(${PROJECT_NAME} SYSTEM PUBLIC ${Boost_INCLUDE_DIRS})
+target_link_libraries(${PROJECT_NAME} PUBLIC pthread ${Boost_LIBRARIES})
 
 if(OCTOMQ_ENABLE_DDS)
     set(OPENDDS_LIBS OpenDDS::Dcps OpenDDS::Tcp OpenDDS::Rtps OpenDDS::Rtps_Udp)

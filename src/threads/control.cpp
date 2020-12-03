@@ -8,6 +8,8 @@
 #include <stdexcept>
 #include <string>
 
+#include <boost/filesystem.hpp>
+
 #include "core/log.hpp"
 #include "core/settings.hpp"
 #include "network/adapter_factory.hpp"
@@ -85,12 +87,12 @@ void control::run(const int argc, const char **argv) {
                 else
                     throw std::runtime_error("unknown option: " + string(argv[i]));
             } else if (config_file_name.empty()) {
-                config_file_name = std::filesystem::absolute(argv[i]);
+                config_file_name = boost::filesystem::absolute(argv[i]).string();
                 if (config_file_name.empty())
                     throw std::runtime_error("not a valid file name: " + string(argv[i]));
-                if (not std::filesystem::exists(config_file_name))
+                if (not boost::filesystem::exists(config_file_name))
                     throw std::runtime_error("path does not exist: " + config_file_name);
-                if (not std::filesystem::is_regular_file(config_file_name))
+                if (not boost::filesystem::is_regular_file(config_file_name))
                     throw std::runtime_error("not a file: " + config_file_name);
                 settings::load(config_file_name, _adapter_pool);
             } else
