@@ -105,11 +105,18 @@ void server::async_listen_to(const connection_ptr& endpoint) {
 
 void server::handle_polycast_receive(const boost::system::error_code& ec,
                                      const std::size_t& bytes_received) {
-    if (ec and _network_error_handler) _network_error_handler(ec);
+    if (_network_error_handler) {
+        if (ec)
+            _network_error_handler(ec);
+        else if (bytes_received < protocol::v1::constants::header_size)
+            _network_error_handler(asio::error::message_size);
+    }
 
-    try {
-        if (*reinterpret_cast<std::uint32_t*>(_polycast_receive_buffer->data()) ==
-            constants::magic_number) {
+    if (*reinterpret_cast<std::uint32_t*>(_polycast_receive_buffer->data()) !=
+        constants::magic_number) {
+        if (_protocol_error_handler) _protocol_error_handler(protocol::invalid_magic_number());
+    } else {
+        try {
             std::pair<packet_type, address> packet_meta =
                 packet::meta_from_payload(_polycast_receive_buffer);
             if (packet_meta.first == packet_type::probe) {
@@ -133,12 +140,11 @@ void server::handle_polycast_receive(const boost::system::error_code& ec,
                             packet_factory::from_payload(_polycast_receive_buffer, bytes_received));
                 }
             }
-        } else
-            throw protocol::invalid_magic_number();
-    } catch (const protocol::basic_error& error) {
-        if (_protocol_error_handler) _protocol_error_handler(error);
-    } catch (const boost::system::system_error& error) {
-        if (_network_error_handler) _network_error_handler(error.code());
+        } catch (const protocol::basic_error& error) {
+            if (_protocol_error_handler) _protocol_error_handler(error);
+        } catch (const boost::system::system_error& error) {
+            if (_network_error_handler) _network_error_handler(error.code());
+        }
     }
 
     async_polycast_listen();

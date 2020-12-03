@@ -193,6 +193,7 @@ packet::packet(const packet_type& packet_type, network_payload_ptr payload)
 const std::string packet::type_name() const { return packet_name::from_type(type); }
 
 std::pair<packet_type, address> packet::meta_from_payload(const network_payload_ptr& payload) {
+    if (payload->size() < constants::header_size) throw packet_too_small();
     const char* payload_data = payload->data();
     const std::uint8_t type_n =
         static_cast<const std::uint8_t>(*(payload_data + constants::type_offset));
