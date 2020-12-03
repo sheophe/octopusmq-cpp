@@ -197,12 +197,8 @@ std::pair<packet_type, address> packet::meta_from_payload(const network_payload_
     const char* payload_data = payload->data();
     const std::uint8_t type_n =
         static_cast<const std::uint8_t>(*(payload_data + constants::type_offset));
-    ip_int ip = network::constants::null_ip;
-    port_int port = network::constants::null_port;
-    std::copy(payload_data + constants::ip_offset,
-              payload_data + constants::ip_offset + constants::ip_size, &ip);
-    std::copy(payload_data + constants::port_offset,
-              payload_data + constants::port_offset + constants::port_size, &port);
+    const ip_int ip = *reinterpret_cast<const ip_int*>(payload_data + constants::ip_offset);
+    const port_int port = *reinterpret_cast<const port_int*>(payload_data + constants::port_offset);
     return std::make_pair(static_cast<packet_type>(type_n), address(ip, port));
 }
 
