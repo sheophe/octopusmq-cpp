@@ -4,15 +4,15 @@
 
 namespace octopus_mq {
 
-message::message(message_payload &&payload) : _payload(move(payload)) {}
+message::message(message_payload &&payload) : _payload(std::move(payload)) {}
 
 message::message(message_payload &&payload, const std::string &origin_client_id)
-    : _payload(move(payload)), _origin_client_id(origin_client_id), _origin_pubopts(0) {}
+    : _payload(std::move(payload)), _origin_client_id(origin_client_id), _origin_pubopts(0) {}
 
 message::message(message_payload &&payload, const std::string &topic, const std::uint8_t pubopts,
                  const address &origin_addr, const std::string &origin_clid,
                  const mqtt::version &version, const mqtt_cpp::v5::properties &props)
-    : _payload(move(payload)),
+    : _payload(std::move(payload)),
       _topic(topic),
       _mqtt_version(version),
       _origin_address(origin_addr),
@@ -21,11 +21,11 @@ message::message(message_payload &&payload, const std::string &topic, const std:
       _origin_props(props) {}
 
 message::message(message_payload &&payload, const std::uint8_t pubopts)
-    : _payload(move(payload)), _origin_pubopts(pubopts) {}
+    : _payload(std::move(payload)), _origin_pubopts(pubopts) {}
 
 void message::payload(const message_payload &payload) { _payload = payload; }
 
-void message::payload(message_payload &&payload) { _payload = move(payload); }
+void message::payload(message_payload &&payload) { _payload = std::move(payload); }
 
 void message::topic(const std::string &topic) { _topic = topic; }
 

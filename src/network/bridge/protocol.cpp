@@ -145,12 +145,19 @@ ipayload_stream& ipayload_stream::operator>>(packet_type& value) {
 }
 
 ipayload_stream& ipayload_stream::operator>>(std::string& value) {
+    value.clear();
     for (char c = *_iterator; c != 0 and _iterator < _payload.end(); c = *_iterator++)
         value.push_back(c);
     return *this;
 }
 
 void ipayload_stream::skip_header() { _iterator += constants::header_size; }
+
+void ipayload_stream::read(network_payload& destination, const std::size_t size) {
+    destination.resize(size);
+    std::copy(_iterator, _iterator + size, destination.begin());
+    _iterator += size;
+}
 
 const network_payload::const_iterator& ipayload_stream::current_iterator() const {
     return _iterator;
@@ -210,8 +217,8 @@ probe::probe(network_payload_ptr payload) : packet(packet_type::probe, payload) 
     ips.skip_header();
     std::uint32_t scope_size = 0;
     ips >> scope_size;
+    std::string scope_string;
     while (scope_size) {
-        std::string scope_string;
         ips >> scope_string;
         sender_scope.add(scope_string);
         --scope_size;
@@ -234,8 +241,8 @@ heartbeat::heartbeat(network_payload_ptr payload) : packet(packet_type::heartbea
     ipayload_stream ips(*payload);
     ips.skip_header();
     ips >> packet_id >> interval >> published_n;
+    std::uint64_t published_hash = 0;
     while (published_n) {
-        std::uint64_t published_hash = 0;
         ips >> published_hash;
         published_hashes.push_back(published_hash);
         --published_n;
@@ -284,6 +291,7 @@ void publication::generate_payload(const compression_type& compression) {
     _compression = compression;
     network_payload uncompressed_payload;
     opayload_stream uops(uncompressed_payload);
+    uops << static_cast<std::uint32_t>(_messages.size());
     for (auto& message : _messages) {
         const mqtt::version& mqtt_version = message->mqtt_version();
         const address& message_origin = message->origin_addr();
@@ -318,6 +326,52 @@ void publication::generate_payload(const compression_type& compression) {
         _payload.assign(std::istreambuf_iterator<char>{ &compression_sb }, {});
     }
     _iter = _payload.begin();
+}
+
+void publication::from_payload(network_payload_ptr payload, const compression_type& compression) {
+    _compression = compression;
+    if (_compression == compression_type::none)
+        _payload = *payload;
+    else {
+        boost::iostreams::filtering_streambuf<boost::iostreams::input> decompression_sb;
+        switch (_compression) {
+            case compression_type::bzip2:
+                decompression_sb.push(boost::iostreams::bzip2_decompressor());
+                break;
+            case compression_type::gzip:
+                decompression_sb.push(boost::iostreams::gzip_decompressor());
+                break;
+            case compression_type::zlib:
+                decompression_sb.push(boost::iostreams::zlib_decompressor());
+                break;
+            default:
+                break;
+        }
+        auto source = boost::iostreams::array_source(payload->data(), payload->size());
+        decompression_sb.push(source);
+        _payload.assign(std::istreambuf_iterator<char>{ &decompression_sb }, {});
+    }
+    ipayload_stream ips(_payload);
+    std::uint32_t messages_n = 0;
+    ips >> messages_n;
+    ip_int origin_ip = network::constants::null_ip;
+    port_int origin_port = network::constants::null_port;
+    std::string origin_clid;
+    std::string topic;
+    std::uint8_t mqtt_version_n = 0;
+    std::uint8_t mqtt_pubopts = 0;
+    std::uint32_t message_size = 0;
+    while (messages_n) {
+        message_payload message_data;
+        ips >> origin_ip >> origin_port >> origin_clid >> topic >> mqtt_version_n >> mqtt_pubopts >>
+            message_size;
+        ips.read(message_data, message_size);
+        address origin_address = address(origin_ip, origin_port);
+        mqtt::version version = static_cast<mqtt::version>(mqtt_version_n);
+        _messages.push_back(std::make_shared<message>(std::move(message_data), topic, mqtt_pubopts,
+                                                      origin_address, origin_clid, version));
+        --messages_n;
+    }
 }
 
 publish::publish(const address& sender_address, const std::uint32_t& packet_id, publication_ptr pub,

@@ -130,6 +130,7 @@ namespace protocol {
             ipayload_stream& operator>>(std::string& value);
 
             void skip_header();
+            void read(network_payload& destination, const std::size_t size);
             const network_payload::const_iterator& current_iterator() const;
         };
 
@@ -207,7 +208,7 @@ namespace protocol {
             compression_type compression() const;
             void read(network_payload_iter_pair& block_iterators);
             void generate_payload(const compression_type& compression);
-            void from_payload(network_payload_ptr payload);
+            void from_payload(network_payload_ptr payload, const compression_type& compression);
         };
 
         using publication_ptr = std::unique_ptr<publication>;
