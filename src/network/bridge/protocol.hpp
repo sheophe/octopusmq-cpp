@@ -37,9 +37,7 @@ namespace protocol {
             none = 0x00,
             bzip2 = 0x01,
             gzip = 0x02,
-            lzma = 0x03,
-            zlib = 0x04,
-            zstd = 0x05
+            zlib = 0x03
         };
 
         namespace packet_name {
@@ -217,8 +215,6 @@ namespace protocol {
         // PUBLISH packet
         // Caller of the serialize constructor MUST make sure that pub is not nullptr
         class publish final : public packet {
-            std::uint64_t checksum(const network_payload_iter_pair& iters);
-
            public:
             publish(const address& sender_address, const std::uint32_t& packet_id,
                     publication_ptr pub, const std::size_t& block_number);  // Serialize constructor
@@ -229,7 +225,6 @@ namespace protocol {
             std::uint32_t total_blocks;
             std::uint32_t block_n;
             std::uint32_t block_size;
-            std::uint64_t block_hash;
             network_payload compressed_payload_block;
         };
 

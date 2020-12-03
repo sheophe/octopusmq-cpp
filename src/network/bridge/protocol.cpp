@@ -8,9 +8,7 @@
 #include <boost/iostreams/filtering_streambuf.hpp>
 #include <boost/iostreams/filter/bzip2.hpp>
 #include <boost/iostreams/filter/gzip.hpp>
-#include <boost/iostreams/filter/lzma.hpp>
 #include <boost/iostreams/filter/zlib.hpp>
-#include <boost/iostreams/filter/zstd.hpp>
 
 namespace octopus_mq::bridge::protocol::v1 {
 
@@ -308,14 +306,8 @@ void publication::generate_payload(const compression_type& compression) {
             case compression_type::gzip:
                 compression_sb.push(boost::iostreams::gzip_compressor());
                 break;
-            case compression_type::lzma:
-                compression_sb.push(boost::iostreams::lzma_compressor());
-                break;
             case compression_type::zlib:
                 compression_sb.push(boost::iostreams::zlib_compressor());
-                break;
-            case compression_type::zstd:
-                compression_sb.push(boost::iostreams::zstd_compressor());
                 break;
             default:
                 break;
@@ -325,11 +317,7 @@ void publication::generate_payload(const compression_type& compression) {
         compression_sb.push(source);
         _payload.assign(std::istreambuf_iterator<char>{ &compression_sb }, {});
     }
-}
-
-std::uint64_t publish::checksum(const network_payload_iter_pair& iters) {
-    // TODO: WRITE THE ACTUAL CODE
-    return iters.second - iters.first;
+    _iter = _payload.begin();
 }
 
 publish::publish(const address& sender_address, const std::uint32_t& packet_id, publication_ptr pub,
@@ -339,14 +327,12 @@ publish::publish(const address& sender_address, const std::uint32_t& packet_id, 
       compression(pub->compression()),
       total_blocks(pub->total_blocks()),
       block_n(block_number),
-      block_size(0),
-      block_hash(0) {
+      block_size(0) {
     network_payload_iter_pair iters;
     pub->read(iters);
     opayload_stream ops(payload);
     ops << this->packet_id << static_cast<std::uint8_t>(this->compression) << this->total_blocks
-        << this->block_n << static_cast<std::uint32_t>(iters.second - iters.first)
-        << this->checksum(iters);
+        << this->block_n << static_cast<std::uint32_t>(iters.second - iters.first);
     ops.push_payload(iters);
 }
 
@@ -355,7 +341,7 @@ publish::publish(network_payload_ptr payload) : packet(packet_type::publish, pay
     ips.skip_header();
     std::uint8_t compression_int = 0;
     ips >> this->packet_id >> compression_int >> this->total_blocks >> this->block_n >>
-        this->block_size >> this->block_hash;
+        this->block_size;
     compression = static_cast<compression_type>(compression_int);
     const network_payload::const_iterator begin_iterator = ips.current_iterator();
     const network_payload::const_iterator end_iterator = begin_iterator + this->block_size;
