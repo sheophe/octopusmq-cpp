@@ -17,18 +17,6 @@
 
 namespace octopus_mq {
 
-void control::arg_help() {
-    log::print_help();
-    exit(0);
-}
-
-void control::arg_daemon() { _daemon = true; }
-
-void control::daemonize() {
-    log::print(log_type::fatal, "daemonization is not supported in current version of octopusmq.");
-    exit(1);
-}
-
 void control::initialize_adapters() {
     for (auto &adapter : _adapter_pool) {
         try {
@@ -83,12 +71,9 @@ void control::run(const int argc, const char **argv) {
     std::string config_file_name;
     if (argc > 1)
         for (int i = 1; i < argc; ++i) {
-            if (argv[i][0] == '-') {
-                if (auto iter = _argument_map.find(argv[i]); iter != _argument_map.end())
-                    iter->second();
-                else
-                    throw std::runtime_error("unknown option: " + std::string(argv[i]));
-            } else if (config_file_name.empty()) {
+            if (std::string("--help").compare(argv[i]) == 0)
+                return log::print_help();
+            else if (config_file_name.empty()) {
                 config_file_name = boost::filesystem::absolute(argv[i]).string();
                 if (config_file_name.empty())
                     throw std::runtime_error("not a valid file name: " + std::string(argv[i]));
@@ -105,14 +90,11 @@ void control::run(const int argc, const char **argv) {
         return log::print_help();
     }
 
-    if (_daemon) daemonize();
-    log::print_started(_daemon);
-
     initialize_adapters();
 
     if (_initialized) {
         print_adapters();
-        // Following functions implements a loop of the main thread.
+        // Next function implements a loop of the main thread.
         // The loop is running as long as _should_stop == false.
         message_queue_manager();
         shutdown_adapters();

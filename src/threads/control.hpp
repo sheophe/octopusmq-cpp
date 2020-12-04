@@ -20,23 +20,16 @@ using arg_handler = std::function<void()>;
 
 class control {
     static inline bool _initialized = false;
-    static inline bool _daemon = false;
     static inline bool _should_stop = false;
 
     static inline message_queue _message_queue = message_queue();
     static inline adapter_pool _adapter_pool = adapter_pool();
 
-    static void arg_daemon();
-    static void arg_help();
-    static void daemonize();
     static void initialize_adapters();
     static void shutdown_adapters();
     static void print_adapters();
 
     static void message_queue_manager();  // Main thread routine
-
-    static inline std::map<std::string, arg_handler> _argument_map = { { "--daemon", arg_daemon },
-                                                                       { "--help", arg_help } };
 
    public:
     static void init_signal_handlers();

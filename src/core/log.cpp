@@ -104,11 +104,9 @@ void log::print_event(const std::string &adapter_name, const std::string &remote
 void log::print_help() {
     std::lock_guard<std::mutex> log_lock(_mutex);
     std::cout << OCTOMQ_BOLD << "octopusmq" << OCTOMQ_RESET
-              << " /path/to/settings.json [--option [value]]" << std::endl;
-    std::cout << "options:" << std::endl << std::setfill(' ');
-    std::cout << std::left << std::setw(16) << "    --daemon" << std::setw(0)
-              << "daemonize the process. useful when running from systemd." << std::endl;
-    std::cout << std::left << std::setw(16) << "    --help" << std::setw(0)
+              << " /path/to/settings.json [--option [value]]" << std::endl
+              << "options:" << std::endl
+              << std::setfill(' ') << std::left << std::setw(16) << "    --help" << std::setw(0)
               << "print this help message and exit." << std::endl;
 }
 
