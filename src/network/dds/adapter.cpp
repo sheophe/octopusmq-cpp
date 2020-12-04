@@ -5,24 +5,17 @@
 
 namespace octopus_mq::dds {
 
-static octopus_mq::adapter_settings_parser adapter_settings_parser = {
-    { adapter::field_name::transport,
-      [](octopus_mq::adapter_settings *self, const adapter_settings_parser_item &item) {
-          if (item->is_string())
-              static_cast<dds::adapter_settings *>(self)->transport(item->get<std::string>());
-          else
-              throw field_type_error(adapter::field_name::transport);
-      } }
-};
-
 adapter_settings::adapter_settings(const nlohmann::json &json)
     : octopus_mq::adapter_settings(protocol_type::dds, json) {
-    // Parse protocol-specific fields from JSON
-    for (auto item_parser : adapter_settings_parser)
-        if (auto json_item = json.find(item_parser.first); json_item != json.end())
-            item_parser.second(this, json_item);
-        else
-            throw missing_field_error(item_parser.first);
+    if (not json.contains(adapter::field_name::transport))
+        throw missing_field_error(adapter::field_name::transport);
+
+    const nlohmann::json &transport_field = json[adapter::field_name::transport];
+    if (not transport_field.is_string()) throw field_type_error(adapter::field_name::transport);
+
+    std::string transport_str = transport_field.get<std::string>();
+    transport(transport_str);
+    name_append(mqtt::adapter_role_name::client + '(' + transport_str + ')');
 }
 
 void adapter_settings::transport(const transport_type &transport) { _transport = transport; }
