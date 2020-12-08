@@ -27,12 +27,12 @@ adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &j
             switch (protocol) {
                 case protocol_type::mqtt:
                     return std::make_shared<mqtt::adapter_settings>(json);
-#ifdef OCTOMQ_ENABLE_DDS
                 case protocol_type::dds:
+#ifdef OCTOMQ_ENABLE_DDS
                     return std::make_shared<dds::adapter_settings>(json);
-#endif
-                default:
+#else
                     throw unknown_protocol_error(protocol_name);
+#endif
             }
         } else
             throw unknown_protocol_error(protocol_name);
@@ -73,12 +73,12 @@ adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr 
                     throw adapter_transport_error(settings->name(), settings->protocol_name());
             }
         };
-#ifdef OCTOMQ_ENABLE_DDS
         case protocol_type::dds:
+#ifdef OCTOMQ_ENABLE_DDS
             return std::make_shared<dds::peer>(settings, message_queue);
+#else
+            throw unknown_protocol_error(network::protocol_name::dds);
 #endif
-        default:
-            return nullptr;
     }
 }
 

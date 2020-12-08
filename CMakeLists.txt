@@ -22,7 +22,7 @@ endif()
 if(OCTOMQ_ENABLE_DDS)
     find_package(OpenDDS 3.14 REQUIRED)
     set(OPENDDS_CMAKE_VERBOSE ON)
-    add_definitions(-DOCTOMQ_USE_DDS)
+    add_definitions(-DOCTOMQ_ENABLE_DDS)
 endif()
 
 if(OCTOMQ_USE_STATIC_LIBS)
