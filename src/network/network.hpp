@@ -8,7 +8,7 @@
 
 namespace octopus_mq {
 
-enum class protocol_type { bridge, dds, mqtt };
+enum class protocol_type { dds, mqtt };
 enum class transport_mode { unicast, multicast, broadcast };
 enum class transport_type { udp, tcp, tls, websocket, tls_websocket };
 enum class network_event_type { send, receive };

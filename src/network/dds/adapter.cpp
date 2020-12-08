@@ -15,7 +15,7 @@ adapter_settings::adapter_settings(const nlohmann::json &json)
 
     std::string transport_str = transport_field.get<std::string>();
     transport(transport_str);
-    name_append(mqtt::adapter_role_name::client + '(' + transport_str + ')');
+    name_append(std::string(mqtt::adapter_role_name::client) + " (" + transport_str + ')');
 }
 
 void adapter_settings::transport(const transport_type &transport) { _transport = transport; }

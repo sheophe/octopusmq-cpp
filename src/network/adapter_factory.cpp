@@ -2,9 +2,6 @@
 
 #include "core/error.hpp"
 #include "threads/mqtt/broker.hpp"
-#ifdef OCTOMQ_ENABLE_OMQB
-#include "threads/bridge/bridge.hpp"
-#endif
 #ifdef OCTOMQ_ENABLE_DDS
 #include "threads/dds/peer.hpp"
 #endif
@@ -12,7 +9,6 @@
 namespace octopus_mq {
 
 static inline const std::map<std::string, protocol_type> _protocol_from_name = {
-    { network::protocol_name::bridge, protocol_type::bridge },
     { network::protocol_name::dds, protocol_type::dds },
     { network::protocol_name::mqtt, protocol_type::mqtt }
 };
@@ -31,10 +27,6 @@ adapter_settings_ptr adapter_settings_factory::from_json(const nlohmann::json &j
             switch (protocol) {
                 case protocol_type::mqtt:
                     return std::make_shared<mqtt::adapter_settings>(json);
-#ifdef OCTOMQ_ENABLE_OMQB
-                case protocol_type::bridge:
-                    return std::make_shared<bridge::adapter_settings>(json);
-#endif
 #ifdef OCTOMQ_ENABLE_DDS
                 case protocol_type::dds:
                     return std::make_shared<dds::adapter_settings>(json);
@@ -81,10 +73,6 @@ adapter_iface_ptr adapter_interface_factory::from_settings(adapter_settings_ptr 
                     throw adapter_transport_error(settings->name(), settings->protocol_name());
             }
         };
-#ifdef OCTOMQ_ENABLE_OMQB
-        case protocol_type::bridge:
-            return std::make_shared<bridge::implementation>(settings, message_queue);
-#endif
 #ifdef OCTOMQ_ENABLE_DDS
         case protocol_type::dds:
             return std::make_shared<dds::peer>(settings, message_queue);
