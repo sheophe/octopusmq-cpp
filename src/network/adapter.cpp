@@ -110,7 +110,7 @@ void message_queue::push(const adapter_settings_ptr adapter, const message_ptr m
     _queue_cv.notify_one();
 }
 
-bool message_queue::wait_and_pop(std::chrono::milliseconds timeout,
+bool message_queue::wait_and_pop(const std::chrono::milliseconds &timeout,
                                  adapter_message_pair &destination) {
     std::unique_lock<std::mutex> queue_lock(_queue_mutex);
     if (_queue_cv.wait_for(queue_lock, timeout, [this] { return not _queue.empty(); })) {
@@ -121,7 +121,8 @@ bool message_queue::wait_and_pop(std::chrono::milliseconds timeout,
         return false;
 }
 
-std::size_t message_queue::wait_and_pop_all(std::chrono::milliseconds timeout, adapter_pool &pool) {
+std::size_t message_queue::wait_and_pop_all(const std::chrono::milliseconds &timeout,
+                                            adapter_pool &pool) {
     std::unique_lock<std::mutex> queue_lock(_queue_mutex);
     std::size_t popped = 0;
     if (_queue_cv.wait_for(queue_lock, timeout, [this] { return not _queue.empty(); })) {

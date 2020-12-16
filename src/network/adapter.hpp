@@ -109,8 +109,8 @@ class message_queue {
 
    public:
     void push(const adapter_settings_ptr adapter, const message_ptr message);
-    bool wait_and_pop(std::chrono::milliseconds timeout, adapter_message_pair &destination);
-    std::size_t wait_and_pop_all(std::chrono::milliseconds timeout, adapter_pool &pool);
+    bool wait_and_pop(const std::chrono::milliseconds &timeout, adapter_message_pair &destination);
+    std::size_t wait_and_pop_all(const std::chrono::milliseconds &timeout, adapter_pool &pool);
 };
 
 }  // namespace octopus_mq
