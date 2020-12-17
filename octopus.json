@@ -10,9 +10,9 @@
         {
             "interface": "*",
             "protocol": "mqtt",
-            "transport": "websocket",
-            "port": 19001,
-            "scope": "#"
+            "transport": "tcp",
+            "port": 1884,
+            "scope": "remote/#"
         }
     ]
 }

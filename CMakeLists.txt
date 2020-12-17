@@ -9,7 +9,7 @@ option(OCTOMQ_ENABLE_DDS "Enable DDS support (FastDDS is required)" OFF)
 option(OCTOMQ_RELEASE_COMPILATION "Compile OctopusMQ with optimization and without debug data" OFF)
 option(OCTOMQ_USE_STATIC_LIBS "Use static linkage to Boost libraries" OFF)
 
-find_package(Boost 1.66.0 REQUIRED COMPONENTS system filesystem iostreams)
+find_package(Boost 1.66.0 REQUIRED COMPONENTS system filesystem)
 
 if(OCTOMQ_ENABLE_TLS)
     message(STATUS "Building with TLS support")
